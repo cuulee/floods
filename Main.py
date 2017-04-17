@@ -8,7 +8,7 @@ inputLocale = util.checkFolder('Locale', Input=True)
 inputLocale = os.path.join(inputLocale,'simbach.geojson')
 # start1=datetime.now() - relativedelta(years=1)
 
-year = 2013
+year = 2016
 while year < 2017:
     start = datetime(year, 5,25)
     end = datetime(year, 6,15)

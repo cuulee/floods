@@ -133,9 +133,12 @@ class API(object):
 
         if os.path.exists(outputPath) and os.path.getsize(outputPath) == info['size']:
             # check if md5 matches with server
-            if compareMD5(outputPath,info['md5']):
+            if self.compareMD5(outputPath,info['md5']):
                 self.logger.info('%s was already found.' % outputPath)
                 return outputPath, info
+            else:
+                self.logger.info('%s was not downloaded correctly' % outputPath)
+                os.remove(outputPath)
 
         #
         # if os.path.exists(outputPath):
@@ -213,9 +216,10 @@ class API(object):
 
     @staticmethod
     def compareMD5(filePath, serverChecksum):
+        print('Comparing %s' %filePath)
         hash = hashlib.md5()
         with open(filePath, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash.update(chunk)
         localChecksum = hash.hexdigest()
-        return localChecksum.hexdigest.lower() == serverChecksum.lower()
+        return localChecksum.lower() == serverChecksum.lower()
