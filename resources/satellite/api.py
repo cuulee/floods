@@ -211,6 +211,7 @@ class API(object):
         coordinates = ['%.5f %.5f' % (coord[0], coord[1]) for coord in coordinates]
         return ','.join(coordinates)
 
+    @staticmethod
     def compareMD5(filePath, serverChecksum):
         hash = hashlib.md5()
         with open(filePath, "rb") as f:
