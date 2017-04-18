@@ -12,7 +12,6 @@ from resources import util
 from urllib.parse import urljoin
 from datetime import date, datetime, timedelta
 
-print('Hello from %s' % __name__)
 
 class APIError(Exception):
 
@@ -85,8 +84,7 @@ class API(object):
         rows=self.pageSize, start=startRow)
         return urljoin(self.url, startQuery)
 
-    def download(self, products, path =None, maxTries = 5):
-        print(len(products))
+    def download(self, products,locale = None, path =None, maxTries = 5):
         if isinstance(products,dict):
             products = [products]
         self.logger.info('Downloading %d images' % len(products))
@@ -96,7 +94,7 @@ class API(object):
             tries = maxTries
             while not downloaded and tries > 0:
                 try:
-                    outputPath, info = self.downloadProduct(product['id'], path)
+                    outputPath, info = self.downloadProduct(product['id'],locale, path)
                     downloaded = True
                 except(KeyboardInterrupt, SystemExit ):
                     raise
@@ -111,7 +109,7 @@ class API(object):
 
         return results
 
-    def downloadProduct(self, id, path = None):
+    def downloadProduct(self, id,locale = None, path = None):
         info = None
         while info is None:
             try:
@@ -125,7 +123,8 @@ class API(object):
             outputName = info['name'] + '.zip'
 
             #             oldPath = os.path.join(outputPath, outputName)
-            outputPath = util.checkFolder('Simbach', path=outputPath)
+            if locale:
+                outputPath = util.checkFolder(locale, path=outputPath)
             outputPath = util.checkFolder(year, path=outputPath )
             outputPath = os.path.join(outputPath, outputName)
         else: outputPath = path
