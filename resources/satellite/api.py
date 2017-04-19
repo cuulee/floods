@@ -9,6 +9,8 @@ import hashlib
 from dateutil.relativedelta import relativedelta
 
 from resources import util
+from resources.notifications.notify import notify as notifyAPI
+
 from urllib.parse import urljoin
 from datetime import date, datetime, timedelta
 
@@ -16,6 +18,7 @@ from datetime import date, datetime, timedelta
 class APIError(Exception):
 
     def __init__(self, status=None, mess=None, body=None):
+
         self.status = status
         self.mess = mess
         self.body = body
@@ -26,8 +29,14 @@ class APIError(Exception):
 
 class API(object):
     sleep = 30
-    def __init__(self, user, passw, url='https://scihub.copernicus.eu/apihub/'):
+    def __init__(self, user, passw, url='https://scihub.copernicus.eu/apihub/', notify = False):
         self.logger = logging.getLogger('SentinelAPI')
+
+        if notify:
+            self.notifications = True
+            self.notify = notifyAPI.getNotify()
+        else: self.notifications = False
+
         self.sesh = requests.Session()
         self.sesh.auth =  (user, passw)
         self.pageSize = 100
@@ -88,6 +97,11 @@ class API(object):
         if isinstance(products,dict):
             products = [products]
         self.logger.info('Downloading %d images' % len(products))
+
+        if self.notifications:
+            self.notify.push('Downloading %d images' % len(products))
+
+
         results = {}
         for i, product in enumerate(products):
             downloaded = False
@@ -106,6 +120,8 @@ class API(object):
             except(UnboundLocalError):
                 self.logger.info('Error downloading %s' % (product['id']))
             self.logger.info('%d of %d images downloaded' % (i, len(products)))
+            if self.notifications:
+                self.notify.push('%d of %d images downloaded' % (i, len(products)))
 
         return results
 
