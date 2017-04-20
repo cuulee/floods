@@ -1,5 +1,6 @@
 import os
 import gdal
+from osgeo import gdalconst
 import datetime
 from resources import util
 from subprocess import Popen
@@ -9,8 +10,6 @@ from skimage import io
 import pywt
 
 
-# from pathlib import Path
-print('hello')
 
 def gdal_error_handler(err_class, err_num, err_msg):
     errtype = {
@@ -43,11 +42,13 @@ class image:
         except IOError as e :
             print(str(e))
 
+    # gets meta data of image
     def getMeta(self):
         if not hasattr(self,'meta'):
             self.meta = self.dataset.GetMetadata()
         return self.meta
 
+    #Converts pixel coordinates to real world point
     def toLongLat(self,points):
         iFile = 'coords.txt'
         oFile = 'longlat.txt'
@@ -67,6 +68,7 @@ class image:
         os.remove(oFile)
         return(coords)
 
+    #Converts real world points to pixels in image
     def toPixel(self,points):
         if type(points[0]) is not list:
             points = [points]
@@ -89,6 +91,7 @@ class image:
         os.remove(oFile)
         return(coords)
 
+    #Gets corner pixels of image
     def getCorners(self):
         gt = self.dataset.GetGeoTransform()
         cols = self.dataset.RasterXSize
@@ -105,6 +108,7 @@ class image:
 
         return points
 
+    #Gets centre of image
     def getCentroid(self):
         points = self.getCorners()
         x = [p[0] for p in points]
@@ -112,16 +116,19 @@ class image:
         centroid = [sum(x) / len(points), sum(y) / len(points)]
         return centroid
 
+    #Sets the long lat of image centroid and returns values in long/lat order
     def getSat(self):
         centroid = self.getCentroid()
         #toLongLat look for an array of points to convert
         centroid = self.toLongLat([centroid])
         self.long, self.lat = float(centroid[0][0]), float(centroid[0][1])
+        return self.long,self.lat
 
+    # Prints the info of image
     def getInfo(self):
         print(gdal.Info( self.dataset))
 
-
+    #Parses name for info, NEEDS MORE WORK
     def nameParse(self):
         name = self.name
         index = 0
@@ -130,6 +137,7 @@ class image:
                 self.date = self.getDate(att)
             index +=1
 
+    #Parses date in the standard name format by esa
     def getDate(self,string):
         year = int(string[6:10])
         month = int(string[10:12])
@@ -137,90 +145,110 @@ class image:
         date = datetime.date(year,month,day)
         return date
 
-    def convertTo(self,type):
-        output = util.checkFolder(type,Output=True)
-        # Obtains a JPEG GDAL driver
-        imageDriver = gdal.GetDriverByName(type)
-        saveOptions = []
-        if type == 'JPEG':
-            saveOptions.append("QUALITY=100")
+    def convertTo(self,type, path=None):
+        array = self.array()
+        x,y = array.shape
+        if not path:
+            path = util.checkFolder('Tiff', Output=True)
+            path = os.path.join(path,'test.tff')
 
-        # Create the .type file
-
-        name = self.name.split('.')[0] + '.' + type.lower()
-        fullName = os.path.join(output,name)
-        imageDriver.CreateCopy(fullName, self.dataset, 0, saveOptions)
-        gdal.Close(self.dataset)
-        print(fullName + " was converted")
+        image.createTiff(array,path,y,x )
+        print('done')
 
 
-    def convert(self, type):
-        oType = type.upper()
-        output = util.checkFolder(oType,Output=True)
 
-        name = self.name.split('.')[0] + '.' + oType.lower()
-        oFile = os.path.join(output,name)
 
-        if oType is 'JPEG':
-            convert = ['gdal_translate', '-ot', 'Byte' , '-of', oType, '-co' ,'COMPRESS=LZW', '-scale'
-                   ,self.path, oFile ]
-        else:
-            convert = ['gdal_translate', '-of', oType, '-co' ,'COMPRESS=LZW', '-scale'
-                       ,self.path, oFile ]
-        proc = subprocess.Popen(convert)
-        proc.wait()
-        print( proc.returncode)
-        print(oFile + " was converted")
 
-    def warpTo(self, image):
-        #oType = type.upper()
-        #       output = checkFolder('Outputs')
-        #       output = checkFolder(oType,output)
-        #       name = self.name.split('.')[0] + '.' + oType.lower()
-        #       oFile = os.path.join(output,name)
+    # #Convers image to type NEEDS MORE WORK
+    # def convertTo(self,type):
+    #     output = util.checkFolder(type,Output=True)
+    #     # Obtains a JPEG GDAL driver
+    #     imageDriver = gdal.GetDriverByName(type)
+    #     saveOptions = []
+    #     if type == 'JPEG':
+    #         saveOptions.append("QUALITY=100")
+    #
+    #     # Create the .type file
+    #
+    #     name = self.name.split('.')[0] + '.' + type.lower()
+    #     fullName = os.path.join(output,name)
+    #     imageDriver.CreateCopy(fullName, self.dataset, 0, saveOptions)
+    #     gdal.Close(self.dataset)
+    #     print(fullName + " was converted")
+    #
+    # # COnverts image to type NEEDS MORE WORK
+    # def convert(self, type):
+    #     oType = type.upper()
+    #     output = util.checkFolder(oType,Output=True)
+    #
+    #     name = self.name.split('.')[0] + '.' + oType.lower()
+    #     oFile = os.path.join(output,name)
+    #
+    #     if oType is 'JPEG':
+    #         convert = ['gdal_translate', '-ot', 'Byte' , '-of', oType, '-co' ,'COMPRESS=LZW', '-scale'
+    #                ,self.path, oFile ]
+    #     else:
+    #         convert = ['gdal_translate', '-of', oType, '-co' ,'COMPRESS=LZW', '-scale'
+    #                    ,self.path, oFile ]
+    #     proc = subprocess.Popen(convert)
+    #     proc.wait()
+    #     print( proc.returncode)
+    #     print(oFile + " was converted")
+    #
+    #
+    #
+    #
+    # #Warps image NEEDS MORE WORK ***********
+    # # def warpTo(self, image):
+    #     #oType = type.upper()
+    #     #       output = checkFolder('Outputs')
+    #     #       output = checkFolder(oType,output)
+    #     #       name = self.name.split('.')[0] + '.' + oType.lower()
+    #     #       oFile = os.path.join(output,name)
+    #
+    #     srcDs = self.dataset
+    #
+    #     srcWidth = srcDs.RasterXSize
+    #     srcHeight = srcDs.RasterYSize
+    #     srcDim = [srcWidth,srcHeight]
+    #
+    #     matchDs = image.dataset
+    #     matchWidth = matchDs.RasterXSize
+    #     matchHeight = matchDs.RasterYSize
+    #     matchDim = [matchWidth, matchHeight]
+    #
+    #     print("src W:%s H:%s" %(srcWidth,srcHeight))
+    #     print("dst W:%s H:%s" %(matchWidth,matchHeight))
+    #
+    #     #         Pick smallest width for destination dataset
+    #     if srcDim < matchDim :
+    #         srcPath = image.path
+    #         dsDim = list(map(str, srcDim))
+    #     else :
+    #         srcPath = self.path
+    #         dsDim =  list(map(str, matchDim))
+    #
+    #     output = util.checkFolder('Warp',Output=True)
+    #     #         name = self.name.split('.')[0] + '.' + oType.lower()
+    #     name = 'a.N1'
+    #     oFile = os.path.join(output,name)
+    #
+    #     #         warp = ['gdalwarp', '-s_srs', '+proj=longlat +datum=WGS84 +no_defs' ,
+    #     #                 '-t_srs' ,'+proj=longlat +datum=WGS84 +no_defs',
+    #     #                 '-ts' , dsDim[0], dsDim[1], '-ot', 'UInt16',
+    #     #                 srcPath, oFile
+    #     #                ]
+    #     warp = ['gdalwarp',
+    #             '-ts' , dsDim[0], dsDim[1], '-ot', 'UInt16',
+    #             self.path, oFile
+    #            ]
+    #
+    #     proc = subprocess.Popen(warp)
+    #     print("Warping %s" % srcPath)
+    #     proc.wait()
+    #     print( proc.returncode)
 
-        srcDs = self.dataset
-
-        srcWidth = srcDs.RasterXSize
-        srcHeight = srcDs.RasterYSize
-        srcDim = [srcWidth,srcHeight]
-
-        matchDs = image.dataset
-        matchWidth = matchDs.RasterXSize
-        matchHeight = matchDs.RasterYSize
-        matchDim = [matchWidth, matchHeight]
-
-        print("src W:%s H:%s" %(srcWidth,srcHeight))
-        print("dst W:%s H:%s" %(matchWidth,matchHeight))
-
-        #         Pick smallest width for destination dataset
-        if srcDim < matchDim :
-            srcPath = image.path
-            dsDim = list(map(str, srcDim))
-        else :
-            srcPath = self.path
-            dsDim =  list(map(str, matchDim))
-
-        output = util.checkFolder('Warp',Output=True)
-        #         name = self.name.split('.')[0] + '.' + oType.lower()
-        name = 'a.N1'
-        oFile = os.path.join(output,name)
-
-        #         warp = ['gdalwarp', '-s_srs', '+proj=longlat +datum=WGS84 +no_defs' ,
-        #                 '-t_srs' ,'+proj=longlat +datum=WGS84 +no_defs',
-        #                 '-ts' , dsDim[0], dsDim[1], '-ot', 'UInt16',
-        #                 srcPath, oFile
-        #                ]
-        warp = ['gdalwarp',
-                '-ts' , dsDim[0], dsDim[1], '-ot', 'UInt16',
-                self.path, oFile
-               ]
-
-        proc = subprocess.Popen(warp)
-        print("Warping %s" % srcPath)
-        proc.wait()
-        print( proc.returncode)
-
+    # Colours image depedning on colour-relief file
     def colourImage(self, colour, *args):
         colour = os.path.join(util.checkFolder('Colour') , colour)
         if os.path.exists(colour):
@@ -243,10 +271,10 @@ class image:
 
         else : print('Could not find colour file %s' %colour)
 
-
     def array(self):
         return self.dataset.ReadAsArray()
 
+    #Display map of image NEEDS WORK
     def toMap(self):
         my_gis = GIS()
         display(my_gis.map(location=(self.lat,self.long), zoomlevel=8))
@@ -267,9 +295,6 @@ class image:
             tmp.append(r1Coords[3])
         else: tmp.append(r2Coords[3])
         return tmp
-
-    def initCorners(self):
-        tmp = [ [] ]
 
     def getMinMax(self,pixels,points):
         tmpPoints = [points[0] for p in points]
@@ -400,10 +425,10 @@ class image:
 
         return array1, array2, right1-left1, bottom1-top1, right2-left2,bottom2-top2, intersection
 
-
-    def createTiff(self, dataset, name, col, row):
+    @staticmethod
+    def createTiff(dataset, outputPath, col, row):
         driver  = gdal.GetDriverByName('GTiff')
-        image = driver.Create(name, col, row, 1, gdalconst.GDT_UInt16 )
+        image = driver.Create(outputPath, col, row, 1, gdalconst.GDT_UInt16 )
         imageBand = image.GetRasterBand(1)
         imageBand.WriteArray(dataset)
 

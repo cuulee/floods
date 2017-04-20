@@ -20,7 +20,7 @@ inputLocale = util.checkFolder('Locale', Input=True)
 inputLocale = os.path.join(inputLocale,'shannon.geojson')
 # start1=datetime.now() - relativedelta(years=1)
 
-year = 2015
+year = 2016
 while year < 2017:
     start = datetime(year, 12,15)
     end = datetime(year+1, 1,15)

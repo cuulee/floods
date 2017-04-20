@@ -99,7 +99,7 @@ class API(object):
         self.logger.info('Downloading %d images' % len(products))
 
         if self.notifications:
-            self.notify.push('Downloading %d images' % len(products))
+            self.notify.push('Downloading %d images' % (len(products)-1))
 
 
         results = {}
@@ -120,9 +120,10 @@ class API(object):
             except(UnboundLocalError):
                 self.logger.info('Error downloading %s' % (product['id']))
             self.logger.info('%d of %d images downloaded' % (i, len(products)))
-            if self.notifications:
+            if self.notifications and i %5== 0:
                 self.notify.push('%d of %d images downloaded' % (i, len(products)))
-
+        if self.notifications:
+            self.notify.push('%d images downloaded' % len(results))
         return results
 
     def downloadProduct(self, id,locale = None, path = None):
@@ -132,7 +133,7 @@ class API(object):
                 info = self.getOData(id)
             except APIError as e:
                 self.logger.info('API error: %s \n Waiting %d seconds.' % (str(e),self.sleep))
-                time.sleep(sleep)
+                time.sleep(self.sleep)
         if path is None:
             outputPath = util.checkFolder('SentinelAPI', Output=True)
             year =datetime.strptime(info['date'], '%Y-%m-%dT%H:%M:%SZ').year
