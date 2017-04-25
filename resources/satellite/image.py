@@ -2,6 +2,7 @@ import os
 import gdal
 from osgeo import gdalconst
 import datetime
+import subprocess
 from resources import util
 from subprocess import Popen
 from arcgis.gis import GIS
@@ -145,16 +146,66 @@ class image:
         date = datetime.date(year,month,day)
         return date
 
-    def convertTo(self,type, path=None):
-        array = self.array()
-        x,y = array.shape
-        if not path:
-            path = util.checkFolder('Tiff', Output=True)
-            path = os.path.join(path,'test.tff')
+    def convertTo(self,type, outputPath=None):
+        types = {'jpeg' :['.jpeg', self.toJpeg ]}
 
-        image.createTiff(array,path,y,x )
+
+        # array = self.array()
+        # y,x = array.shape
+
+
+
+        if not outputPath:
+            outputPath = util.checkFolder('Tiff', Output=True)
+            outputPath = os.path.join(outputPath,'test.tiff')
+
+        elif os.path.exists(os.path.dirname(outputPath)):
+            outputName = self.name.split('.')[0] + types[type][0]
+            outputPath = os.path.join(outputPath,outputName)
+
+
+        # toFunc = types[]
+
+        types[type][1](self.path,outputPath)
+        print('fin')
+        # self.toJpeg(array,outputPath)
+
+        return
+
+        image.createTiff(array,outputPath,x,y )
+
+
+        # driver  = gdal.GetDriverByName('GTiff')
+        # image = driver.Create(outputPath, col, row, 1, gdalconst.GDT_UInt16 )
+        # imageBand = image.GetRasterBand(1)
+        # imageBand.WriteArray(dataset)
+
         print('done')
 
+    @staticmethod
+    def toJpeg(inputPath, outputPath):
+
+
+        # convert = ['gdal_translate', '-of', 'JPEG', '-co' ,'-scale'
+        #                ,inputPath, outputPath ]
+        convert = ['gdal_translate','-of', 'JPEG' ,'-co', 'TILED=YES', '-co', 'COMPRESS=LZW', '-ot', 'Byte', '-scale', inputPath, outputPath ]
+
+        # subprocess.call(["gdal_translate.exe","-co", "TILED=YES", "-co", "COMPRESS=LZW" "-ot", "Byte", "-scale", image_in, image_out ])
+        array = io.imread(inputPath)
+        io.imsave(outputPath,array)
+
+        # proc = subprocess.Popen(convert)
+        #     proc.wait()
+        #     print( proc.returncode)
+
+        # y,x = array.shape
+        # driver = gdal.GetDriverByName('JPEG')
+        # saveOptions = []
+        # saveOptions.append("QUALITY=100")
+        # img = driver.Create(outputPath,y,x,1,gdalconst.GDT_UInt16)
+        # imgBand = img.GetRasterBand(1)
+        # imgBand.WriteArray(array)
+        print('hello')
 
 
 
@@ -272,7 +323,7 @@ class image:
         else : print('Could not find colour file %s' %colour)
 
     def array(self):
-        return self.dataset.ReadAsArray()
+        return io.imread(self.path)
 
     #Display map of image NEEDS WORK
     def toMap(self):
@@ -426,11 +477,11 @@ class image:
         return array1, array2, right1-left1, bottom1-top1, right2-left2,bottom2-top2, intersection
 
     @staticmethod
-    def createTiff(dataset, outputPath, col, row):
+    def createTiff(array, outputPath, col, row):
         driver  = gdal.GetDriverByName('GTiff')
         image = driver.Create(outputPath, col, row, 1, gdalconst.GDT_UInt16 )
         imageBand = image.GetRasterBand(1)
-        imageBand.WriteArray(dataset)
+        imageBand.WriteArray(array)
 
     def createIntersectionOf(self, image,outPutNames, saveImages= False, outputFolder=None): #Creates two images in the same area
         src = self.dataset
@@ -516,8 +567,6 @@ class image:
                 pass
 
         print('Created fused image  :%s' % oName)
-
-
 
     def fuseImages(self, array1, array2, mode, level): # Return fused images as array
 

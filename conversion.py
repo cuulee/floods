@@ -3,10 +3,7 @@ from resources.satellite.image import image as satImage
 import os
 
 
-
 folder = util.checkFolder('Conversion', Input=True)
-
-
 
 images = []
 for file in util.files(folder):
@@ -15,4 +12,6 @@ for file in util.files(folder):
 
 
 for image in images:
-    image.convertTo(1)
+    outputPath = util.checkFolder('Jpeg',Output=True)
+
+    image.convertTo('jpeg',outputPath = outputPath )

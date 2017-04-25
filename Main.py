@@ -17,18 +17,16 @@ from resources.notifications.notify import notify
 
 api = API('gillesk3','rockyou94',notify=True)
 inputLocale = util.checkFolder('Locale', Input=True)
-inputLocale = os.path.join(inputLocale,'shannon.geojson')
+inputLocale = os.path.join(inputLocale,'connacht.geojson')
 # start1=datetime.now() - relativedelta(years=1)
-
-year = 2016
+year = 2015
 while year < 2017:
     start = datetime(year, 12,15)
     end = datetime(year+1, 1,15)
     print(start, end)
     results = api.query(inputLocale,startDate=start,endDate = end)
-    print(len(results))
     if len(results) > 0:
-        api.download(results,locale = 'Athlone')
+        api.download(results,locale = 'Connacht')
     year += 1
 
 
