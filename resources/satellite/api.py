@@ -113,7 +113,7 @@ class API(object):
         self.logger.info('Downloading %d images' % len(products))
 
         if self.notifications:
-            self.notify.push('Downloading %d images' % (len(products)-1))
+            self.notify.push('Downloading %d images' % (len(products)))
 
 
         results = {}
@@ -133,9 +133,9 @@ class API(object):
                 results[outputPath] = info
             except(UnboundLocalError):
                 self.logger.info('Error downloading %s' % (product['id']))
-            self.logger.info('%d of %d images downloaded' % (i, len(products)))
-            if self.notifications and i %5== 0:
-                self.notify.push('%d of %d images downloaded' % (i, len(products)))
+            self.logger.info('%d of %d images downloaded' % (i+1, len(products)))
+            if self.notifications and i+1 %5== 0:
+                self.notify.push('%d of %d images downloaded' % (i+1, len(products)))
         if self.notifications:
             self.notify.push('%d images downloaded' % len(results))
         return results
