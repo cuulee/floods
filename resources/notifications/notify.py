@@ -15,15 +15,22 @@ class device(object):
             self.nickname = deviceInfo['nickname']
             self.pushToken = deviceInfo['nickname']
             self.active = deviceInfo['active']
-        except KeyError:
+        except (KeyError, TypeError):
             self.id = None
             self.nickname = None
             self.pushToken = None
             self.active = False
-        url = url if url.endswith('/') else url + '/'
 
+        url = url if url.endswith('/') else url + '/'
+        self.basUrl = url
         self.url = urljoin(url, 'devices/%s' %self.id)
         self.sesh = sesh
+
+    def __str__(self):
+        try:
+            return getattr(self, "nickname")
+        except :
+            return 'None'
 
     def updateInfo(self, **info):
         data = info
@@ -33,7 +40,55 @@ class device(object):
 
     def deleteDevice(self):
         response = self.sesh.delete(self.url)
-        print(response.status_code)
+        if response.status_code != 200:
+            print('Error deleting device')
+
+    def deletePushes(self):
+        url = urljoin(self.basUrl, 'pushes')
+        response = self.sesh.delete(url)
+        if response.status_code != 200:
+            print('Error deleting pushes')
+
+class push(object):
+    def __init__(self, pushInfo, sesh, url=  'https://api.pushbullet.com/v2/' ):
+        try:
+            self.id = pushInfo['iden']
+            self.active = pushInfo['active']
+            self.dismissed = pushInfo['dismissed']
+            self.modifiedDate = pushInfo['modified']
+            self.body = pushInfo['body']
+            self.type = pushInfo['type']
+            # self.title = pushInfo['title']
+
+        except KeyError as e:
+            pass
+        url = url if url.endswith('/') else url + '/'
+
+        self.url = urljoin(url, 'pushes/%s' %self.id)
+        self.sesh = sesh
+
+    def __str__(self):
+        try:
+            return getattr(self, "body")
+        except AttributeError:
+            try:
+                return getattr(self, "title")
+            except:
+                return 'None'
+
+    def read(self):
+        data = {'dismissed':'true'}
+        response = self.sesh.post(self.url,data=data)
+        if response.status_code != 200:
+            print('Error reading push')
+
+
+    def delete(self):
+        response = self.sesh.delete(self.url)
+        if response.status_code != 200:
+            print('Error deleting push')
+
+
 
 class notify(object):
     try:
@@ -43,7 +98,8 @@ class notify(object):
     options = {'p' : 'pushes', 'push': 'pushes',
                'd' : 'devices', 'device' :'devices'
                }
-    minWindow = 1
+
+    minWindow = 40
 
     def __init__(self, APIKey, url= 'https://api.pushbullet.com/v2/', target = 'Main', logging = False ):
         if target == 'Main':
@@ -61,7 +117,6 @@ class notify(object):
         self.sesh = requests.Session()
         self.sesh.auth = (APIKey,'')
         self.getDevices()
-
 
     def logInit(self):
         try:
@@ -94,22 +149,42 @@ class notify(object):
     def getPushes(self, active = True):
         now = time.time()
         timeWindow = self.__getTimeWindow()
-        print(timeWindow)
         data = {'modified_after' :timeWindow,
                 'active' : active}
 
-        # data = json.dumps(data)
-
-
         url = urljoin(self.url, self.options['p'])
         response = self.sesh.get(url,params=data,auth=self.sesh.auth)
-        print(response.json())
-        print(now,timeWindow)
-        pass
+
+        pushes = [push(pushMessage, self.sesh) for pushMessage in  response.json()['pushes'] ]
+        activePushes = [p for p in pushes if p.active == True]
+        self.checkPushes(activePushes)
+
+    def deleteMainPush(self):
+        if hasattr(self, 'mainDevice'):
+            self.mainDevice.deletePushes()
+
+    def checkPushes(self,pushes):
+        command = {'print' : self.printing}
+
+
+        for p in pushes:
+            if hasattr(p, 'body'):
+                body = p.body.lower().strip()
+                if body in command and p.dismissed == False:
+                    self.runCommand(p,body,command)
+
+
+    def runCommand(self,p,body,command):
+        command[body]()
+        p.read()
+
+    def printing(self):
+        self.push('OK Printing', title = 'Command')
+        print('printing')
+
 
     def __getTimeWindow(self):
         return time.mktime( ( datetime.datetime.now() -datetime.timedelta(minutes=self.minWindow) ).timetuple()  )
-
 
     def getNames(self):
         if hasattr(self, 'devices'):
@@ -121,21 +196,27 @@ class notify(object):
             except:
                 print('Error getting device names')
 
-
     # Returns new devices first
     def getDevices(self,option='d'):
         url = urljoin(self.url, self.options[option])
         response = self.sesh.get(url, auth=self.sesh.auth)
-        self.devices = [device(dev, self.sesh) for dev in  response.json()['devices'] ]
+        self.devices = self.activeDevices([device(dev, self.sesh) for dev in  response.json()['devices'] ])
         if hasattr(self, 'defaultDevice'):
             try:
                 self.mainDevice = [dev for dev in self.devices if self.defaultDevice == dev.nickname][0]
             except:
-                print('no main device found')
-                self.mainDevice = None
+                self.mainDevice = device(None,self.sesh)
 
 
         return self.devices
+
+    def activeDevices(self, devices):
+        tmp = []
+        for d in devices:
+            if hasattr(d,'id' ):
+                if d.id:
+                    tmp.append(d)
+        return tmp
 
     @staticmethod
     def getNotify(target=None,logging=False):

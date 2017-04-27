@@ -40,7 +40,7 @@ def getImages(locale,startYear,notify=True):
 
 
 
-getImages('Donegal',2015)
+getImages('Donegal',2016)
 
 note.push('Fin')
 # print('fin')
