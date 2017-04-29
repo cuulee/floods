@@ -5,7 +5,7 @@ import datetime
 import subprocess
 from resources import util
 from subprocess import Popen
-from arcgis.gis import GIS
+# from arcgis.gis import GIS
 from IPython.display import display
 from skimage import io
 import pywt
@@ -135,16 +135,21 @@ class image:
         index = 0
         for att in name.split('_'):
             if index is 2:
-                self.date = self.getDate(att)
+                pass
+                # FIX DATES
+                # self.date = self.getDate(att)
             index +=1
 
     #Parses date in the standard name format by esa
     def getDate(self,string):
-        year = int(string[6:10])
-        month = int(string[10:12])
-        day = int(string[12:])
-        date = datetime.date(year,month,day)
-        return date
+        try:
+            year = int(string[6:10])
+            month = int(string[10:12])
+            day = int(string[12:])
+            date = datetime.date(year,month,day)
+            return date
+        except ValueError:
+            return datetime.now()
 
     def convertTo(self,type, outputPath=None):
         types = {'jpeg' :['.jpeg', self.toJpeg ]}
@@ -188,14 +193,14 @@ class image:
 
         # convert = ['gdal_translate', '-of', 'JPEG', '-co' ,'-scale'
         #                ,inputPath, outputPath ]
-        convert = ['gdal_translate','-of', 'JPEG' ,'-co', 'TILED=YES', '-co', 'COMPRESS=LZW', '-ot', 'Byte', '-scale', inputPath, outputPath ]
+        convert = ['gdal_translate','-of', 'JPEG' , '-ot', 'Byte', '-scale', inputPath, outputPath ]
 
         # subprocess.call(["gdal_translate.exe","-co", "TILED=YES", "-co", "COMPRESS=LZW" "-ot", "Byte", "-scale", image_in, image_out ])
-        array = io.imread(inputPath)
-        io.imsave(outputPath,array)
+        # array = io.imread(inputPath)
+        # io.imsave(outputPath,array)
 
-        # proc = subprocess.Popen(convert)
-        #     proc.wait()
+        proc = subprocess.Popen(convert)
+        proc.wait()
         #     print( proc.returncode)
 
         # y,x = array.shape
@@ -206,9 +211,6 @@ class image:
         # imgBand = img.GetRasterBand(1)
         # imgBand.WriteArray(array)
         print('hello')
-
-
-
 
     # #Convers image to type NEEDS MORE WORK
     # def convertTo(self,type):
@@ -326,10 +328,10 @@ class image:
         return io.imread(self.path)
 
     #Display map of image NEEDS WORK
-    def toMap(self):
-        my_gis = GIS()
-        display(my_gis.map(location=(self.lat,self.long), zoomlevel=8))
-        print("Outputting Map")
+    # def toMap(self):
+    #     my_gis = GIS()
+    #     display(my_gis.map(location=(self.lat,self.long), zoomlevel=8))
+    #     print("Outputting Map")
 
     def getIntersection(self,r1Coords,r2Coords):
         tmp = []

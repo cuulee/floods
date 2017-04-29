@@ -88,8 +88,6 @@ class push(object):
         if response.status_code != 200:
             print('Error deleting push')
 
-
-
 class notify(object):
     try:
         defaultDevice = util.configSectionMap("Devices")['main']
@@ -98,10 +96,10 @@ class notify(object):
     options = {'p' : 'pushes', 'push': 'pushes',
                'd' : 'devices', 'device' :'devices'
                }
-
+    # commands = {'print' : printing()}
     minWindow = 40
 
-    def __init__(self, APIKey, url= 'https://api.pushbullet.com/v2/', target = 'Main', logging = False ):
+    def __init__(self, APIKey, url= 'https://api.pushbullet.com/v2/', target = 'Main', logging = False, commands = None ):
         if target == 'Main':
             self.targetMain = True
 
@@ -112,6 +110,15 @@ class notify(object):
         if logging:
             self.logInit()
 
+        if commands:
+            if type(commands) is dict:
+                self.commands = commands
+
+            else:
+                print('Commands must be in name : func format')
+                self.commands = None
+        else:
+            self.commands = None
 
         self.url = url if url.endswith('/') else url + '/'
         self.sesh = requests.Session()
@@ -157,25 +164,33 @@ class notify(object):
 
         pushes = [push(pushMessage, self.sesh) for pushMessage in  response.json()['pushes'] ]
         activePushes = [p for p in pushes if p.active == True]
-        self.checkPushes(activePushes)
+        return self.checkPushes(activePushes)
 
     def deleteMainPush(self):
         if hasattr(self, 'mainDevice'):
             self.mainDevice.deletePushes()
 
     def checkPushes(self,pushes):
-        command = {'print' : self.printing}
-
-
+        serverQuit = False
         for p in pushes:
             if hasattr(p, 'body'):
                 body = p.body.lower().strip()
-                if body in command and p.dismissed == False:
-                    self.runCommand(p,body,command)
+                if body in self.commands and p.dismissed == False:
+                    self.runCommand(p,body)
+        return serverQuit
 
 
-    def runCommand(self,p,body,command):
-        command[body]()
+    def runCommand(self,p,body):
+        # command = self.commands[body]
+        #
+        # notifyMethod = getattr(self, command, None)
+        # if callable(notifyMethod):
+        #     locals()[command]()
+        # else:
+        #     locals()[command]()
+        # # if self
+        self.push('Ok running %s function' % body)
+        self.commands[body]()
         p.read()
 
     def printing(self):
@@ -219,6 +234,6 @@ class notify(object):
         return tmp
 
     @staticmethod
-    def getNotify(target=None,logging=False):
+    def getNotify(target=None,logging=False,commands = None):
         pushKey = util.configSectionMap("Keys")['pushbullet']
-        return notify(pushKey,target=target,logging=logging)
+        return notify(pushKey,target=target,logging=logging,commands=commands)

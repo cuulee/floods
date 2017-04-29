@@ -1,17 +1,13 @@
-from resources.notifications.notify import notify
+from resources.notifications.notifyServer import server as notifyServer
+# from resources.notifications.notify import notify
+from resources import util
+
+def wow():
+    from resources.notifications.notify import notify
+    note = notify.getNotify()
+    note.push('Hi Mammy!')
 
 
-
-notify = notify.getNotify()
-# devices = notify.getDevices()
-
-# notify.mainDevice.deletePushes()
-# notify.deleteMainPush()
-notify.getPushes()
-
-# notify.getPushes()
-
-# notify.getPushes()
-# devices = notify.getDevices()
-# print(notify.getNames())
-# print(len(devices))
+server = notifyServer.getServer(commands={'wow':wow})
+# note = notify.getNotify()
+# note.push('Yo')
