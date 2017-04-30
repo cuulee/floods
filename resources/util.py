@@ -111,11 +111,11 @@ def comparePoint(images,distance, backgroundImages = None, moreInfo = False):
     return close
 
 def moveFile(path, dst):
-    name = os.path.basename(path)
-    folderName = name[14:18]
-    folderPath = self.checkFolder(folderName, path=dst)
-    fileDst = os.path.join(folderPath,name)
-    shutil.copy(path, fileDst )
+    # name = os.path.basename(path)
+    # folderName = name[14:18]
+    # folderPath = self.checkFolder(folderName, path=dst)
+    # fileDst = os.path.join(folderPath,name)
+    shutil.copy(path, dst )
     os.remove(path)
 
 def sortImages(similiarImages, hasBackground, noBackground):

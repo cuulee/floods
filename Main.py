@@ -10,28 +10,37 @@ from resources.notifications.notify import notify
 # print(pushKey)
 #
 # # a = notify()
-# note = notify(pushKey)
+note = notify.getNotify()
 # note.getDevices()
 
 
+def getImages(locale,startYear,notify=True):
+    try:
+        localeName = str(locale.lower()) + '.geojson'
+        inputLocale = util.checkFolder('Locale', Input=True)
+        inputLocale = os.path.join(inputLocale,localeName)
+        api = API('gillesk3','rockyou94',notify=notify)
 
-api = API('gillesk3','rockyou94',notify=True)
-inputLocale = util.checkFolder('Locale', Input=True)
-inputLocale = os.path.join(inputLocale,'shannon.geojson')
-# start1=datetime.now() - relativedelta(years=1)
-
-year = 2016
-while year < 2017:
-    start = datetime(year, 12,15)
-    end = datetime(year+1, 1,15)
-    print(start, end)
-    results = api.query(inputLocale,startDate=start,endDate = end)
-    print(len(results))
-    if len(results) > 0:
-        api.download(results,locale = 'Athlone')
-    year += 1
+        year = startYear
+        endYear = datetime.now().year
+        while year < endYear:
+            start = datetime(year, 12,15)
+            end = datetime(year+1, 1,15)
+            print(start, end)
+            results = api.query(inputLocale,startDate=start,endDate = end)
+            print(len(results))
+            if len(results) > 0:
+                api.download(results,locale = locale)
+            year += 1
 
 
-note = notify.getNotify();
-note.push('Finished')
-print('fin')
+
+    except:
+        print('Unable to download images')
+
+
+
+getImages('Donegal',2016)
+
+note.push('Fin')
+# print('fin')

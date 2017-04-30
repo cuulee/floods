@@ -29,6 +29,7 @@ class APIError(Exception):
 
 class API(object):
     sleep = 30
+    options = {'ground':"productType:GRD"}
     def __init__(self, user, passw, url='https://scihub.copernicus.eu/apihub/', notify = False):
         self.logger = logging.getLogger('SentinelAPI')
 
@@ -42,9 +43,20 @@ class API(object):
         self.pageSize = 100
         self.url = url if url.endswith('/') else url + '/'
 
-    def query(self,locale, startDate=None, endDate=datetime.now(), **kwards):
+    def query(self,locale, option = None, startDate=None, endDate=datetime.now(), **kwards):
+        if not option:
+            option = self.options['ground']
+        else:
+            try:
+                option = self.options[option]
+            except KeyError as e:
+                print('%s is not a correct option, using default' % e)
+                option = self.options['ground']
+
+
+
         locale = self.getCoords(locale)
-        query = self.formatQuery(locale, startDate, endDate, **kwards)
+        query = self.formatQuery(locale, option, startDate, endDate, **kwards)
         return self.runQuery(query)
 
     def runQuery(self,query, startRow=0):
@@ -55,7 +67,7 @@ class API(object):
             jsonFeed = response.json()['feed']
             totalResults = int(jsonFeed['opensearch:totalResults'])
         except (ValueError, KeyError):
-            raise APIError(status.response.status_code,
+            raise APIError(response.status_code,
                            mess='Response not valid',
                            body=response.content)
 
@@ -72,7 +84,7 @@ class API(object):
             output += self.runQuery(query,startRow=(startRow+self.pageSize))
         return output
 
-    def formatQuery(self,locale, startDate=None, endDate=datetime.now(), **kwargs):
+    def formatQuery(self,locale, option, startDate=None, endDate=datetime.now(), **kwargs):
         if startDate is None:
             startDate = self.formatDate(endDate - timedelta(hours=24) )
 
@@ -82,6 +94,8 @@ class API(object):
         queryLocale =  'AND (footprint:"Intersects(POLYGON((%s)))")'  % locale
 
         filters = ''
+        filters += ' AND %s' % option
+
         for key in kwargs.keys():
             filters += ' AND (%s:%s)' % (key, kwargs[key])
 
@@ -99,7 +113,7 @@ class API(object):
         self.logger.info('Downloading %d images' % len(products))
 
         if self.notifications:
-            self.notify.push('Downloading %d images' % (len(products)-1))
+            self.notify.push('Downloading %d images' % (len(products)))
 
 
         results = {}
@@ -119,9 +133,9 @@ class API(object):
                 results[outputPath] = info
             except(UnboundLocalError):
                 self.logger.info('Error downloading %s' % (product['id']))
-            self.logger.info('%d of %d images downloaded' % (i, len(products)))
-            if self.notifications and i %5== 0:
-                self.notify.push('%d of %d images downloaded' % (i, len(products)))
+            self.logger.info('%d of %d images downloaded' % (i+1, len(products)))
+            if self.notifications and (i+1) %5== 0:
+                self.notify.push('%d of %d images downloaded' % (i+1, len(products)))
         if self.notifications:
             self.notify.push('%d images downloaded' % len(results))
         return results
@@ -226,6 +240,8 @@ class API(object):
 
         geojson_obj = geojson.loads(open(file, 'r').read())
         coordinates = geojson_obj['features'][featureNumber]['geometry']['coordinates'][0]
+        # coordinates = geojson_obj['features'][2]['geometry']['coordinates']
+
 
         coordinates = ['%.5f %.5f' % (coord[0], coord[1]) for coord in coordinates]
         return ','.join(coordinates)

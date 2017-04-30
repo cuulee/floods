@@ -2,9 +2,10 @@ import os
 import gdal
 from osgeo import gdalconst
 import datetime
+import subprocess
 from resources import util
 from subprocess import Popen
-from arcgis.gis import GIS
+# from arcgis.gis import GIS
 from IPython.display import display
 from skimage import io
 import pywt
@@ -134,30 +135,82 @@ class image:
         index = 0
         for att in name.split('_'):
             if index is 2:
-                self.date = self.getDate(att)
+                pass
+                # FIX DATES
+                # self.date = self.getDate(att)
             index +=1
 
     #Parses date in the standard name format by esa
     def getDate(self,string):
-        year = int(string[6:10])
-        month = int(string[10:12])
-        day = int(string[12:])
-        date = datetime.date(year,month,day)
-        return date
+        try:
+            year = int(string[6:10])
+            month = int(string[10:12])
+            day = int(string[12:])
+            date = datetime.date(year,month,day)
+            return date
+        except ValueError:
+            return datetime.now()
 
-    def convertTo(self,type, path=None):
-        array = self.array()
-        x,y = array.shape
-        if not path:
-            path = util.checkFolder('Tiff', Output=True)
-            path = os.path.join(path,'test.tff')
+    def convertTo(self,type, outputPath=None):
+        types = {'jpeg' :['.jpeg', self.toJpeg ]}
 
-        image.createTiff(array,path,y,x )
+
+        # array = self.array()
+        # y,x = array.shape
+
+
+
+        if not outputPath:
+            outputPath = util.checkFolder('Tiff', Output=True)
+            outputPath = os.path.join(outputPath,'test.tiff')
+
+        elif os.path.exists(os.path.dirname(outputPath)):
+            outputName = self.name.split('.')[0] + types[type][0]
+            outputPath = os.path.join(outputPath,outputName)
+
+
+        # toFunc = types[]
+
+        types[type][1](self.path,outputPath)
+        print('fin')
+        # self.toJpeg(array,outputPath)
+
+        return
+
+        image.createTiff(array,outputPath,x,y )
+
+
+        # driver  = gdal.GetDriverByName('GTiff')
+        # image = driver.Create(outputPath, col, row, 1, gdalconst.GDT_UInt16 )
+        # imageBand = image.GetRasterBand(1)
+        # imageBand.WriteArray(dataset)
+
         print('done')
 
+    @staticmethod
+    def toJpeg(inputPath, outputPath):
 
 
+        # convert = ['gdal_translate', '-of', 'JPEG', '-co' ,'-scale'
+        #                ,inputPath, outputPath ]
+        convert = ['gdal_translate','-of', 'JPEG' , '-ot', 'Byte', '-scale', inputPath, outputPath ]
 
+        # subprocess.call(["gdal_translate.exe","-co", "TILED=YES", "-co", "COMPRESS=LZW" "-ot", "Byte", "-scale", image_in, image_out ])
+        # array = io.imread(inputPath)
+        # io.imsave(outputPath,array)
+
+        proc = subprocess.Popen(convert)
+        proc.wait()
+        #     print( proc.returncode)
+
+        # y,x = array.shape
+        # driver = gdal.GetDriverByName('JPEG')
+        # saveOptions = []
+        # saveOptions.append("QUALITY=100")
+        # img = driver.Create(outputPath,y,x,1,gdalconst.GDT_UInt16)
+        # imgBand = img.GetRasterBand(1)
+        # imgBand.WriteArray(array)
+        print('hello')
 
     # #Convers image to type NEEDS MORE WORK
     # def convertTo(self,type):
@@ -272,13 +325,13 @@ class image:
         else : print('Could not find colour file %s' %colour)
 
     def array(self):
-        return self.dataset.ReadAsArray()
+        return io.imread(self.path)
 
     #Display map of image NEEDS WORK
-    def toMap(self):
-        my_gis = GIS()
-        display(my_gis.map(location=(self.lat,self.long), zoomlevel=8))
-        print("Outputting Map")
+    # def toMap(self):
+    #     my_gis = GIS()
+    #     display(my_gis.map(location=(self.lat,self.long), zoomlevel=8))
+    #     print("Outputting Map")
 
     def getIntersection(self,r1Coords,r2Coords):
         tmp = []
@@ -426,11 +479,11 @@ class image:
         return array1, array2, right1-left1, bottom1-top1, right2-left2,bottom2-top2, intersection
 
     @staticmethod
-    def createTiff(dataset, outputPath, col, row):
+    def createTiff(array, outputPath, col, row):
         driver  = gdal.GetDriverByName('GTiff')
         image = driver.Create(outputPath, col, row, 1, gdalconst.GDT_UInt16 )
         imageBand = image.GetRasterBand(1)
-        imageBand.WriteArray(dataset)
+        imageBand.WriteArray(array)
 
     def createIntersectionOf(self, image,outPutNames, saveImages= False, outputFolder=None): #Creates two images in the same area
         src = self.dataset
@@ -477,12 +530,16 @@ class image:
 
         # W should be positive note negative, translate back afte
 
-    def polymerization(self, image2, mode=None, saveImages=False, level=None, clean=True ):
-        outputFolder = util.checkFolder('Fusion', Input=True)
-        outputNames = ['a.tiff', 'b.tiff']
+    def polymerization(self, image2, mode=None, saveImages=False, level=None, clean=True, intersectOutputPath = None,   outputFolder = None ):
+        if not intersectOutputPath:
+            intersectOutputPath = util.checkFolder('Fusion', Input=True)
+        try:
+            outputNames = [self.name, image2.name]
+        except:
+            outputNames=[self.name,'IntersectOf'+self.name]
         intersectState = self.createIntersectionOf(image2,outputNames,
                                                    saveImages=saveImages,
-                                                   outputFolder=outputFolder)
+                                                   outputFolder=intersectOutputPath)
         if not mode:
             mode = 'db7'
         if not level:
@@ -492,22 +549,23 @@ class image:
             array1 = intersectState[0]
             array2 = intersectState[1]
             # No need to delete image that weren't saved
-            print(array1.shape, array2.shape)
             clean = False
 
 
         else:
-            image1 = os.path.join(outputFolder, outputNames[0] )
-            array1 = skimage.io.imread(image1,True, 'gdal')
+            image1 = os.path.join(intersectOutputPath, outputNames[0] )
+            array1 = io.imread(image1,True, 'gdal')
 
-            image2 = os.path.join(outputFolder, outputNames[1])
-            array2 = skimage.io.imread(image2,True, 'gdal')
+            image2 = os.path.join(intersectOutputPath, outputNames[1])
+            array2 = io.imread(image2,True, 'gdal')
 
 
         fusedImage = self.fuseImages(array1, array2, mode,level)
-        outputFolder = util.checkFolder('Fusion', Output=True)
-        oName = os.path.join(outputFolder,'test.tiff')
-        skimage.io.imsave(oName,fusedImage)
+        if not outputFolder:
+            outputFolder = util.checkFolder('Fusion', Output=True)
+
+        oName = os.path.join(outputFolder,'Fused'+self.name)
+        io.imsave(oName,fusedImage)
         if clean:
             try:
                 os.remove(image1)
@@ -515,6 +573,26 @@ class image:
             except FileNotFoundError:
                 pass
 
+        print('Created fused image  :%s' % oName)
+
+    def fuseWith(self,image2, outputFolder=None, mode = None, level = None):
+        array1 = self.array()
+        array2 = image2.array()
+
+        if not mode:
+            mode = 'db7'
+        if not level:
+            level = 7
+
+        try:
+            fusedImage = self.fuseImages(array1, array2, mode,level)
+        except MemoryError:
+            print('Unable to fuse %s' % self.name)
+            return
+        if not outputFolder:
+            outputFolder = util.checkFolder('Fusion', Output=True)
+        oName = os.path.join(outputFolder,'Fused'+self.name)
+        io.imsave(oName,fusedImage)
         print('Created fused image  :%s' % oName)
 
 
