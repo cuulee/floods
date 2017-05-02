@@ -10,7 +10,8 @@ from IPython.display import display
 from skimage import io
 import pywt
 
-
+from PIL import Image
+import numpy as np
 
 def gdal_error_handler(err_class, err_num, err_msg):
     errtype = {
@@ -170,9 +171,9 @@ class image:
 
 
         # toFunc = types[]
-
+        print('Converting image to %s' %types[type][0][1:])
         types[type][1](self.path,outputPath)
-        print('fin')
+        print('Finished image to %s' %types[type][0])
         # self.toJpeg(array,outputPath)
 
         return
@@ -189,19 +190,43 @@ class image:
 
     @staticmethod
     def toJpeg(inputPath, outputPath):
+        tmpName = os.path.splitext(inputPath)[0] +'.tmp'
+        array = np.array(io.imread(inputPath))
+        # int8 = array.astype('uint8')
+        y, x = array.shape
+        tiffDriver  = gdal.GetDriverByName('GTiff')
+
+        intTiff = tiffDriver.Create(tmpName,x,y,1,gdalconst.GDT_UInt16)
+        intTiff.GetRasterBand(1).WriteArray(array)
+
+
+        jpegDriver  = gdal.GetDriverByName('JPEG')
+        jpegDriver.CreateCopy(outputPath, intTiff,0)
+        # os.remove(tmpName)
+        print(outputPath)
+        return
+
+        # array = np.array(io.imread(inputPath))
+        # int8 = array.astype('uint8')
+        # array =io.imread(inputPath)
+        # im = Image.fromarray(array)
+        # im = im.convert('L')
+        # print(im)
+        # im.save(outputPath)
+        # io.imsave(outputPath,int8)
 
 
         # convert = ['gdal_translate', '-of', 'JPEG', '-co' ,'-scale'
         #                ,inputPath, outputPath ]
-        convert = ['gdal_translate','-of', 'JPEG' , '-ot', 'Byte', '-scale', inputPath, outputPath ]
+        # convert = ['gdal_translate','-of', 'JPEG' , '-ot', 'Byte', '-scale',inputPath, outputPath ]
 
         # subprocess.call(["gdal_translate.exe","-co", "TILED=YES", "-co", "COMPRESS=LZW" "-ot", "Byte", "-scale", image_in, image_out ])
         # array = io.imread(inputPath)
         # io.imsave(outputPath,array)
 
-        proc = subprocess.Popen(convert)
-        proc.wait()
-        #     print( proc.returncode)
+        # proc = subprocess.Popen(convert)
+        # proc.wait()
+
 
         # y,x = array.shape
         # driver = gdal.GetDriverByName('JPEG')
@@ -210,7 +235,6 @@ class image:
         # img = driver.Create(outputPath,y,x,1,gdalconst.GDT_UInt16)
         # imgBand = img.GetRasterBand(1)
         # imgBand.WriteArray(array)
-        print('hello')
 
     # #Convers image to type NEEDS MORE WORK
     # def convertTo(self,type):
@@ -326,6 +350,7 @@ class image:
 
     def array(self):
         return io.imread(self.path)
+        # return self.dataset.GetRasterBand(1).ReadAsArray()
 
     #Display map of image NEEDS WORK
     # def toMap(self):

@@ -2,7 +2,14 @@ from resources import util
 from resources.satellite.image import image as satImage
 from resources.notifications.notify import notify
 import os
-from PIL import Image
+import csv
+from PIL import Image, ImageFile
+
+import image_slicer
+Image.MAX_IMAGE_PIXELS = 1000000000
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+thumbnailSize = 299,299
 
 def parseFolder(directory, findPosition=True,type =None):
     #Check if variable was already created because of recursion
@@ -90,11 +97,46 @@ def findPair(files,type):
 
     return pairs
 
+def getBasename(filepath):
+    name = os.path.split(filepath)[1]
+    return os.path.splitext(name)[0]
+
+def findImages(files,type,directory):
+    vvhh = findPair(files,type)
+    fusedDir = os.path.join(directory,'Fused')
+    imageData = {}
+    if os.path.exists(fusedDir):
+        fusedFiles = parseFolder(fusedDir,findPosition=False,type='jpeg')
+
+    for i in range(len(vvhh)):
+        basename = getBasename(vvhh[i][0])
+        for fusedImage in fusedFiles:
+            if basename in fusedImage:
+                tmp = vvhh[i]
+                tmp.append(fusedImage)
+                vvhh[i] = tmp
+
+        if basename in imageData:
+            print('Error file %s was already in dataset' % basename)
+        imageData.update({basename:vvhh[i]})
+
+
+    return imageData
+    # for pair in vvhh:
+    #     path = pair[0]
+    #     print(getBasename(path))
+
 def writeCsv(images,filePath):
     with open(filePath, 'w', newline='') as imageFile:
         writer = csv.writer(imageFile, delimiter=';')
-        headers = ['VH','VV','LABEL']
-        writer.writerow(header)
+        headers = ['BASENAME','VH','VV','LABEL']
+        writer.writerow(headers)
+        for basename in images:
+            tmp = [basename]
+            for value in images[basename]:
+                tmp.append(value)
+            writer.writerow(tmp)
+    print('finished writing')
 
 def parseImages(images):
     imageInfo = []
@@ -112,31 +154,125 @@ def parseImages(images):
         tmp = [imagevv,imagevh,label]
         imageInfo.append(tmp)
 
+def fuseImages(locale,notif=True,outputPath=None):
+    if notif:
+        note = notify.getNotify()
+        note.push('Fusing images from %s' % locale)
+    else: print('Fusing images from %s' % locale)
 
-note = notify.getNotify()
+    directory = util.checkFolder('Proccessed', Output=True)
+    tiff = util.checkFolder(locale,path=directory)
+    tiffImages = parseFolder(tiff,findPosition=False, type='tif')
+    tiffPairs = findPair(tiffImages,'tif')
+
+    if not outputPath:
+        outputPath = util.checkFolder(locale, path=directory)
+        outputPath = util.checkFolder('Fused',path=outputPath)
+
+    for i,pair in enumerate(tiffPairs):
+        if notif:
+            note.push('fusing %d :%d'%(i+1,(len(tiffPairs))))
+
+        imageVV, imageVH = satImage(pair[0],findPosition=True), satImage(pair[1],findPosition=True)
+        imageVV.fuseWith(imageVH,outputFolder=outputPath)
+        # print(imageVV.array().shape)
+    if notif:
+        note.push('Finished fusion')
+
+def toJpeg(locale,inputPath =None,outputPath=None, fusion = False):
+    directory = util.checkFolder('Proccessed', Output=True)
+
+    if not inputPath:
+        inputPath = util.checkFolder(locale,path=directory)
+        if fusion:
+            inputPath = util.checkFolder('Fused',path=inputPath)
+
+
+
+    tiffImages = parseFolder(inputPath,findPosition=False, type='tif')
+
+    if not outputPath:
+        outputPath = util.checkFolder('JPEGS',path =directory)
+        outputPath = util.checkFolder(locale,path=outputPath)
+        if fusion:
+            outputPath = util.checkFolder('Fused',path=outputPath)
+
+    satImage(tiffImages[0]).convertTo('jpeg',outputPath=outputPath)
+    # satImage(tiffImages[0]).getInfo()
+
+
+
+    # print(tiffImages)
+
+
+def labelImages(images,directory):
+    for basename in images:
+        image = images[basename][0]
+
+        imagesList = image_slicer.main.split_image(image, 4)
+        print(imagesList)
+        # im = Image.open(image)
+        # test = im.crop((0,0,0,0))
+        # test.show()
+        # im.thumbnail(thumbnailSize)
+        # path = os.path.join(directory,basename)
+        # im.save(path + ".thumbnail", "JPEG")
+        break
+
+
+
+def crop(Path, input, height, width, k, page, area):
+    im = Image.open(input)
+    imgwidth, imgheight = im.size
+    for i in range(0,imgheight,height):
+        for j in range(0,imgwidth,width):
+            box = (j, i, j+width, i+height)
+            a = im.crop(box)
+            try:
+                o = a.crop(area)
+                o.save(os.path.join(Path,"PNG","%s" % page,"IMG-%s.png" % k))
+            except:
+                pass
+            k +=1
+
 
 locale = 'Simach'
 
 directory = util.checkFolder('Proccessed', Output=True)
-brimJpegs = util.checkFolder('JPEGS', path=directory)
-brimJpegs = util.checkFolder(locale,path=brimJpegs)
-brimTiff = util.checkFolder(locale,path=directory)
+directory = util.checkFolder('JPEGS',path =directory)
+jpegs = util.checkFolder(locale,path=directory)
+images = parseFolder(jpegs,findPosition=False,type='jpg')
+imageData = findImages(images,'jpg',jpegs)
 
-# jpgImages = parseFolder(brimJpegs,findPosition=False, type='jpeg')
-tiffImages = parseFolder(brimTiff,findPosition=False, type='tif')
 
+thumbnails = util.checkFolder('thumb',jpegs)
+
+iamgeData = labelImages(imageData,thumbnails)
+
+# trackerFile = os.path.join(directory,'tracker.csv')
+# writeCsv(imageData,trackerFile)
+
+# fuseImages(locale)
+
+
+
+
+# toJpeg(locale,fusion=True)
+
+
+
+# #
+#     jpegs = util.checkFolder('JPEGS', path=directory)
+#     jpegs = util.checkFolder(locale,path=Jpegs)
+    # jpgImages = parseFolder(jpegs,findPosition=False, type='jpeg')
+#
 
 # jpgPairs = findPair(jpgImages,'jpeg')
-tiffPairs = findPair(tiffImages,'tif')
 
-outputPath = util.checkFolder(locale, path=directory)
-outputPath = util.checkFolder('Fused',path=outputPath)
-print(outputPath)
 
-for i,pair in enumerate(tiffPairs):
-    note.push('fusing %d :%d'%(i+1,len(tiffPairs)))
-    imageVV, imageVH = satImage(pair[0],findPosition=True), satImage(pair[1],findPosition=True)
-    imageVV.fuseWith(imageVH,outputFolder=outputPath)
+
+
+
     # print(imageVH.path,imageVV.path)
     # imageVH.array()
     # break
