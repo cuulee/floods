@@ -1,4 +1,3 @@
-
 from resources.resource import util
 import pickle
 import os
@@ -11,12 +10,11 @@ class tracker(object):
     def __init__(self,trackerPath=None):
 
         self.loadTracker()
-        if len(self.files) >0:
-            print(self.files)
+
 
     def loadTracker(self):
         trackName = 'tracker.pkl'
-        trackerPath = util.checkFolder('Processed',Output=True)
+        trackerPath = util.checkFolder('JPEGS',Inputs=True)
         self.path = os.path.join(trackerPath,trackName)
 
         if os.path.isfile(self.path):
@@ -50,3 +48,18 @@ class tracker(object):
 
     def numLabels(self):
         return len(self.labels)
+
+
+    def writeCsv(self):
+        filePath= util.checkFolder('JPEGS',Inputs=True)
+        filePath= os.path.join(filePath,'tracker.csv')
+        with open(filePath, 'w', newline='') as imageFile:
+            writer = csv.writer(imageFile, delimiter=';')
+            headers = ['BASENAME','VH','VV','FUSED','LABEL']
+            writer.writerow(headers)
+            for basename in files:
+                tmp = [basename]
+                for value in files[basename]:
+                    tmp.append(value)
+                writer.writerow(tmp)
+        print('finished writing')
