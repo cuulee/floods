@@ -1,24 +1,34 @@
-from resources import util
-from resources.satellite.image import image as satImage
-from resources.notifications.notify import notify
+from resources.resource import util
+from resources.resource import image as satImage
+from resources.resource import notify
+from resources.resource import tracker
+
 import os
 import csv
 from PIL import Image, ImageFile
 
-import image_slicer
+import gdal
+import psutil
+import scipy
+
+
+
+
 Image.MAX_IMAGE_PIXELS = 1000000000
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 thumbnailSize = 299,299
 
-def parseFolder(directory, findPosition=True,type =None):
+def parseFolder(directory, findPosition=True,type =None, ignoreDir=[]):
     #Check if variable was already created because of recursion
     if 'stats' not in locals() or 'stats' not in globals():
         stats = []
     for file in os.listdir(directory):
         path = os.path.join(directory,file)
         if os.path.isdir(path):
-            stats =  stats +parseFolder(path,findPosition=findPosition,type = type)
+            folder = str(os.path.split(path)[1])
+            if folder not in ignoreDir:
+                stats =  stats +parseFolder(path,findPosition=findPosition,type = type,ignoreDir=ignoreDir)
         else:
             if type:
                 if path.endswith(type):
@@ -111,10 +121,12 @@ def findImages(files,type,directory):
     for i in range(len(vvhh)):
         basename = getBasename(vvhh[i][0])
         for fusedImage in fusedFiles:
+            tmp = vvhh[i]
             if basename in fusedImage:
-                tmp = vvhh[i]
                 tmp.append(fusedImage)
-                vvhh[i] = tmp
+            else:
+                tmp.append('')
+            vvhh[i] = tmp
 
         if basename in imageData:
             print('Error file %s was already in dataset' % basename)
@@ -204,50 +216,67 @@ def toJpeg(locale,inputPath =None,outputPath=None, fusion = False):
 
     # print(tiffImages)
 
-
-def labelImages(images,directory):
+def labelImages(images):
     for basename in images:
-        image = images[basename][0]
+        tmp = images[basename]
+        image = tmp[0]
 
-        imagesList = image_slicer.main.split_image(image, 4)
-        print(imagesList)
-        # im = Image.open(image)
-        # test = im.crop((0,0,0,0))
-        # test.show()
-        # im.thumbnail(thumbnailSize)
-        # path = os.path.join(directory,basename)
-        # im.save(path + ".thumbnail", "JPEG")
+        print(image)
+
+        data = gdal.Open(image)
+        image = data.GetRasterBand(1).ReadAsArray()
+        im = Image.fromarray(image)
+
+        im.thumbnail((1000,1000))
+        im.show()
+        label = input('enter y for flood or n for none: ')
+        label = label.lower()
+        while label != 'y' and label != 'n':
+            label = input('enter y for flood or n for none: ')
+            print (label)
+            label = label.lower()
+        if label is 'y':
+            label = 'Flood'
+        else:
+            label = 'None'
+        print(label)
+        for proc in psutil.process_iter():
+            if proc.name() == "display":
+                proc.kill()
+
+        tmp.append(label)
+        images.update({basename:tmp})
         break
 
+def organise(locale):
+    directory = util.checkFolder('JPEGS',Input=True)
+    images = parseFolder(directory=,findPosition=False,type='jpg')
+    imageData = findImages(images,'jpg',directory)
+    imageData = labelImages(imageData,thumbnails)
+    stalker = tracker()
+    stalker.add(imageData)
+    stalker.saveTracker()
+
+# stalker = tracker()
+# stalker.files.update({'a':1})
+# stalker.saveTracker()
 
 
-def crop(Path, input, height, width, k, page, area):
-    im = Image.open(input)
-    imgwidth, imgheight = im.size
-    for i in range(0,imgheight,height):
-        for j in range(0,imgwidth,width):
-            box = (j, i, j+width, i+height)
-            a = im.crop(box)
-            try:
-                o = a.crop(area)
-                o.save(os.path.join(Path,"PNG","%s" % page,"IMG-%s.png" % k))
-            except:
-                pass
-            k +=1
+locale = 'Brimach'
+organise(locale)
 
 
-locale = 'Simach'
 
-directory = util.checkFolder('Proccessed', Output=True)
-directory = util.checkFolder('JPEGS',path =directory)
-jpegs = util.checkFolder(locale,path=directory)
-images = parseFolder(jpegs,findPosition=False,type='jpg')
-imageData = findImages(images,'jpg',jpegs)
-
-
-thumbnails = util.checkFolder('thumb',jpegs)
-
-iamgeData = labelImages(imageData,thumbnails)
+# locale = 'Simach'
+#
+# directory = util.checkFolder(locale)
+# # directory = util.checkFolder('JPEGS',path =directory)
+# # jpegs = util.checkFolder(locale,path=directory)
+# images = parseFolder(directory,findPosition=False,type='jpg',ignoreDir=['Old'])
+#
+#
+# thumbnails = util.checkFolder('thumb',path=directory)
+# imageData = labelImages(imageData,thumbnails)
 
 # trackerFile = os.path.join(directory,'tracker.csv')
 # writeCsv(imageData,trackerFile)

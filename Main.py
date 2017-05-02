@@ -1,11 +1,11 @@
-from resources import util
-from resources.satellite.api import API
+from resources.resource import util
+from resources.resource import API
+from resources.resource import notify
+
 from datetime import datetime
 import os
 
-from resources.notifications.notify import notify
 
-#
 # pushKey = util.configSectionMap("Keys")['pushbullet']
 # print(pushKey)
 #

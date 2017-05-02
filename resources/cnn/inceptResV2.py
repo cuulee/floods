@@ -1,6 +1,8 @@
 import tensorflow as tf
 
 slim = tf.contrib.slim
+
+
 def schema35(net, scale= 1.0, scope=None, reuse=None, activationFunc=tf.nn.relu):
     with tf.variable_scope(scope, 'Schema35', [net], reuse=reuse):
         with tf.variable_scope('Branch_1'):
@@ -190,3 +192,29 @@ def inceptResV2(inputs, numClasses = 2, reuse=None, scope='IncepResV2',
                 ############# LOGIT END ##################
 
                 return logits , endPoints
+
+
+def inceptResV2ArgScope(weightDecay=0.00004, batchNorm =True, batchNormDecay =0.9997, batchNormEpsil = 0.001 ):
+    batchNormPara = {'decay':batchNormDecay,
+                     'epsilon': batchNormEpsil,
+                     'updateCollection': tf.GraphKeys.UPDATE_OPS}
+    if batchNorm:
+        normalizerFunc = slim.batch_norm
+        normalizerPara = slim.batch_norm_params
+    else:
+        normalizerFumc = None
+        normalizerPara = {}
+
+    #Sets weightDecy for conv & fully con layer
+    with slim.arg_scope([slim.conv2d,slim.fully_connected],
+                        weights_regularizer=slim.l2_regularizer(weight_decay)):
+
+        with slim.arg_scope([slim.conv2d],
+                            weights_initializer=slim.variance_scaling_initializer(),
+                            activation_fn=tf.nn.relu,
+                            normalizer_fn=normalizer_fn,
+                            normalizer_params=normalizer_params) as sc:
+            return sc
+
+
+inceptResV2.defaultImageSize = 299

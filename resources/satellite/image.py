@@ -3,7 +3,7 @@ import gdal
 from osgeo import gdalconst
 import datetime
 import subprocess
-from resources import util
+from resources.resource import util
 from subprocess import Popen
 # from arcgis.gis import GIS
 from IPython.display import display

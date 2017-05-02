@@ -8,8 +8,11 @@ import shutil
 import hashlib
 from dateutil.relativedelta import relativedelta
 
-from resources import util
-from resources.notifications.notify import notify as notifyAPI
+
+from resources.resource import util
+from resources.resource import image as satImage
+from resources.resource import notify as notifyAPI
+
 
 from urllib.parse import urljoin
 from datetime import date, datetime, timedelta
