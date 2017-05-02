@@ -3,13 +3,10 @@ from resources.resource import image as satImage
 from resources.resource import notify
 from resources.resource import tracker
 
-import os
-import csv
+import os,sys
 from PIL import Image, ImageFile
 
 import gdal
-import psutil
-import scipy
 
 
 
@@ -17,126 +14,10 @@ import scipy
 Image.MAX_IMAGE_PIXELS = 1000000000
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-thumbnailSize = 299,299
-
-def parseFolder(directory, findPosition=True,type =None, ignoreDir=[]):
-    #Check if variable was already created because of recursion
-    if 'stats' not in locals() or 'stats' not in globals():
-        stats = []
-    for file in os.listdir(directory):
-        path = os.path.join(directory,file)
-        if os.path.isdir(path):
-            folder = str(os.path.split(path)[1])
-            if folder not in ignoreDir:
-                stats =  stats +parseFolder(path,findPosition=findPosition,type = type,ignoreDir=ignoreDir)
-        else:
-            if type:
-                if path.endswith(type):
-                    stats.append(path)
-            else:
-                stats.append(path)
 
 
-    return stats
-
-def isVer(path):
-    dirAbove = os.path.split(os.path.dirname(path))[1]
-    return dirAbove == 'VV'
-
-def isHor(path):
-    dirAbove = os.path.split(os.path.dirname(path))[1]
-    return dirAbove == 'VH'
-
-def getSimName(path,type):
 
 
-    vh = 'VH.%s' % type
-    vv = 'VV.%s' % type
-    removeLength = len(type) + 3
-    name = os.path.basename(path)
-    if name.endswith(vh):
-        return name[:-removeLength] + vv
-
-    elif name.endswith(vv):
-        return name[:-removeLength] + vh
-
-    elif name.endswith(type):
-        return name
-
-def getSimPath(path):
-    paths = os.path.split(os.path.dirname(path))
-    # check directory above if its vh or vv
-    if paths[1] == 'VH':
-        return os.path.join(paths[0],'VV')
-
-
-    elif paths[1] == 'VV':
-        return os.path.join(paths[0],'VH')
-
-def findPair(files,type):
-    pairs = []
-    i = 1
-    for path in files:
-        try:
-            if isVer(path):
-                vh = getSimPath(path)
-                vh = os.path.join(vh,getSimName(path,type))
-
-                if vh in files:
-                    # files.remove(path)
-                    files.remove(vh)
-                    pairs.append([path,vh])
-                else:
-
-                    print('cant find match for %s' % path)
-
-
-            elif isHor(path):
-                vv= getSimPath(path)
-                vv = os.path.join(vv,getSimName(path,type))
-
-                if vv in files:
-                    # files.remove(path)
-                    files.remove(vv)
-                    pairs.append([vv,path])
-                else:
-
-                    print('cant find match for %s' % path)
-        except TypeError:
-            print('Error finding matching file, Check if file type is correct')
-
-    return pairs
-
-def getBasename(filepath):
-    name = os.path.split(filepath)[1]
-    return os.path.splitext(name)[0]
-
-def findImages(files,type,directory):
-    vvhh = findPair(files,type)
-    fusedDir = os.path.join(directory,'Fused')
-    imageData = {}
-    if os.path.exists(fusedDir):
-        fusedFiles = parseFolder(fusedDir,findPosition=False,type='jpeg')
-
-    for i in range(len(vvhh)):
-        basename = getBasename(vvhh[i][0])
-        for fusedImage in fusedFiles:
-            tmp = vvhh[i]
-            if basename in fusedImage:
-                tmp.append(fusedImage)
-            else:
-                tmp.append('')
-            vvhh[i] = tmp
-
-        if basename in imageData:
-            print('Error file %s was already in dataset' % basename)
-        imageData.update({basename:vvhh[i]})
-
-
-    return imageData
-    # for pair in vvhh:
-    #     path = pair[0]
-    #     print(getBasename(path))
 
 def writeCsv(images,filePath):
     with open(filePath, 'w', newline='') as imageFile:
@@ -150,21 +31,7 @@ def writeCsv(images,filePath):
             writer.writerow(tmp)
     print('finished writing')
 
-def parseImages(images):
-    imageInfo = []
-    for imagePair in images:
-        imagevv = imagePair[0]
-        imagevh = imagePair[1]
-        print(imagevv)
-        image = Image.open(imagevv)
-        image.show()
-        label = input('Enter f for flood or f for none')
-        label = label.lower()
-        while label is not 'f' or label is not 'n':
-            label = input('Enter f for flood or f for none')
-            label = label.lower()
-        tmp = [imagevv,imagevh,label]
-        imageInfo.append(tmp)
+
 
 def fuseImages(locale,notif=True,outputPath=None):
     if notif:
@@ -174,7 +41,7 @@ def fuseImages(locale,notif=True,outputPath=None):
 
     directory = util.checkFolder('Proccessed', Output=True)
     tiff = util.checkFolder(locale,path=directory)
-    tiffImages = parseFolder(tiff,findPosition=False, type='tif')
+    tiffImages = tracker.parseFolder(tiff,findPosition=False, type='tif')
     tiffPairs = findPair(tiffImages,'tif')
 
     if not outputPath:
@@ -201,7 +68,7 @@ def toJpeg(locale,inputPath =None,outputPath=None, fusion = False):
 
 
 
-    tiffImages = parseFolder(inputPath,findPosition=False, type='tif')
+    tiffImages = tracker.parseFolder(inputPath,findPosition=False, type='tif')
 
     if not outputPath:
         outputPath = util.checkFolder('JPEGS',path =directory)
@@ -216,44 +83,49 @@ def toJpeg(locale,inputPath =None,outputPath=None, fusion = False):
 
     # print(tiffImages)
 
-def labelImages(images):
-    for basename in images:
-        tmp = images[basename]
-        image = tmp[0]
+def labelImages(images): #Takes in
+    try:
+        for basename in images:
+            tmp = images[basename]
+            image = satImage(tmp[0])
 
-        print(image)
+            # image = satImage(image).array()
+            # im = Image.fromarray(image)
+            #
+            # im.thumbnail((1000,1000))
+            # im.show()
 
-        data = gdal.Open(image)
-        image = data.GetRasterBand(1).ReadAsArray()
-        im = Image.fromarray(image)
-
-        im.thumbnail((1000,1000))
-        im.show()
-        label = input('enter y for flood or n for none: ')
-        label = label.lower()
-        while label != 'y' and label != 'n':
+            image.show()
             label = input('enter y for flood or n for none: ')
-            print (label)
+            label = 'y'
             label = label.lower()
-        if label is 'y':
-            label = 'Flood'
-        else:
-            label = 'None'
-        print(label)
-        for proc in psutil.process_iter():
-            if proc.name() == "display":
-                proc.kill()
+            while label != 'y' and label != 'n':
+                label = input('enter y for flood or n for none: ')
+                print (label)
+                label = label.lower()
+            if label == 'y':
+                label = 'Flood'
+            else:
+                label = 'None'
+            satImage.killDisplay()
 
-        tmp.append(label)
-        images.update({basename:tmp})
-        break
+            tmp.append(label)
+
+            images.update({basename:tmp})
+
+        return images
+    except KeyboardInterrupt:
+        print('Exiting')
+        satImage.killDisplay()
+
+        sys.exit()
 
 def organise(locale):
     directory = util.checkFolder('JPEGS',Input=True)
     directory = util.checkFolder(locale,path=directory)
-    images = parseFolder(directory,findPosition=False,type='jpg')
-    imageData = findImages(images,'jpg',directory)
-    imageData = labelImages(imageData,thumbnails)
+    images = tracker.parseFolder(directory,findPosition=False,type='jpg')
+    imageData = tracker.findImages(images,'jpg',directory)
+    imageData = labelImages(imageData)
     stalker = tracker()
     stalker.add(imageData)
     stalker.saveTracker()
@@ -264,8 +136,15 @@ def organise(locale):
 
 
 locale = 'Brimach'
+# stalker = tracker()
+# print(stalker.files)
+# stalker.writeCsv()
 organise(locale)
 
+
+# a  =['A','B','C']
+# b = [char.lower() for char in a ]
+# print(b)
 
 
 # locale = 'Simach'
@@ -273,7 +152,7 @@ organise(locale)
 # directory = util.checkFolder(locale)
 # # directory = util.checkFolder('JPEGS',path =directory)
 # # jpegs = util.checkFolder(locale,path=directory)
-# images = parseFolder(directory,findPosition=False,type='jpg',ignoreDir=['Old'])
+# images = tracker.parseFolder(directory,findPosition=False,type='jpg',ignoreDir=['Old'])
 #
 #
 # thumbnails = util.checkFolder('thumb',path=directory)
@@ -294,7 +173,7 @@ organise(locale)
 # #
 #     jpegs = util.checkFolder('JPEGS', path=directory)
 #     jpegs = util.checkFolder(locale,path=Jpegs)
-    # jpgImages = parseFolder(jpegs,findPosition=False, type='jpeg')
+    # jpgImages = tracker.parseFolder(jpegs,findPosition=False, type='jpeg')
 #
 
 # jpgPairs = findPair(jpgImages,'jpeg')

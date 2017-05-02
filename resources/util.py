@@ -36,7 +36,6 @@ def checkFolder(folder, Input = False, Output=False, path=None ):
 
         return folderPath
     except:
-        pass
         raise
 
 def haversine(lat1, lon1, lat2, lon2):

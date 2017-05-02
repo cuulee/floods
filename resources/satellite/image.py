@@ -7,11 +7,17 @@ from resources.resource import util
 from subprocess import Popen
 # from arcgis.gis import GIS
 from IPython.display import display
-from skimage import io
+# from skimage import io
 import pywt
 
-from PIL import Image
+from PIL import Image, ImageFile
 import numpy as np
+import psutil
+
+
+Image.MAX_IMAGE_PIXELS = 1000000000
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 
 def gdal_error_handler(err_class, err_num, err_msg):
     errtype = {
@@ -30,6 +36,10 @@ def gdal_error_handler(err_class, err_num, err_msg):
 gdal.PushErrorHandler(gdal_error_handler)
 
 class image:
+
+    displaySize = 1000,1000
+
+
     def __init__(self,path, findPosition=False ):
         try:
             if not os.path.exists(path):
@@ -43,6 +53,12 @@ class image:
                 self.getSat()
         except IOError as e :
             print(str(e))
+
+    def __str__(self):
+        try:
+            return getattr(self, "path")
+        except AttributeError:
+            return 'None'
 
     # gets meta data of image
     def getMeta(self):
@@ -120,11 +136,14 @@ class image:
 
     #Sets the long lat of image centroid and returns values in long/lat order
     def getSat(self):
-        centroid = self.getCentroid()
-        #toLongLat look for an array of points to convert
-        centroid = self.toLongLat([centroid])
-        self.long, self.lat = float(centroid[0][0]), float(centroid[0][1])
-        return self.long,self.lat
+        try:
+            centroid = self.getCentroid()
+            #toLongLat look for an array of points to convert
+            centroid = self.toLongLat([centroid])
+            self.long, self.lat = float(centroid[0][0]), float(centroid[0][1])
+            return self.long,self.lat
+        except:
+            return
 
     # Prints the info of image
     def getInfo(self):
@@ -235,6 +254,19 @@ class image:
         # img = driver.Create(outputPath,y,x,1,gdalconst.GDT_UInt16)
         # imgBand = img.GetRasterBand(1)
         # imgBand.WriteArray(array)
+
+    def killDisplay():
+        for proc in psutil.process_iter():
+            if proc.name() == "display":
+                proc.kill()
+
+    def show(self,size=None):
+        if not size:
+            size = self.displaySize
+        im = Image.fromarray(self.array())
+
+        im.thumbnail((1000,1000))
+        im.show()
 
     # #Convers image to type NEEDS MORE WORK
     # def convertTo(self,type):
@@ -348,9 +380,15 @@ class image:
 
         else : print('Could not find colour file %s' %colour)
 
-    def array(self):
-        return io.imread(self.path)
-        # return self.dataset.GetRasterBand(1).ReadAsArray()
+    #ONLY WORKS FOR SINGLE BAND
+    def array(self,band=None):
+        try:
+            if not band:
+                return self.dataset.GetRasterBand(1).ReadAsArray()
+            else:
+                return self.dataset.GetRasterBand(band).ReadAsArray()
+        except ValueError:
+            return None
 
     #Display map of image NEEDS WORK
     # def toMap(self):
