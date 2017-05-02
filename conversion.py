@@ -250,7 +250,8 @@ def labelImages(images):
 
 def organise(locale):
     directory = util.checkFolder('JPEGS',Input=True)
-    images = parseFolder(directory=,findPosition=False,type='jpg')
+    directory = util.checkFolder(locale,path=directory)
+    images = parseFolder(directory,findPosition=False,type='jpg')
     imageData = findImages(images,'jpg',directory)
     imageData = labelImages(imageData,thumbnails)
     stalker = tracker()

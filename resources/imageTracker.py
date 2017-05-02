@@ -6,7 +6,7 @@ import os
 
 class tracker(object):
     files = {}
-
+    labels = []
 
     def __init__(self,trackerPath=None):
 
@@ -24,6 +24,7 @@ class tracker(object):
                 with open(self.path, 'rb') as input:
                     track =  pickle.load(input)
                     self.files = track.files
+                    self.labels = track.labels
             except:
                 return
         else: return
@@ -35,10 +36,17 @@ class tracker(object):
     def add(self,images,overwrite = False):
         for basename in images.keys:
             tmp = images[basename]
+            label = tmp[3].lower()
+            tmp[3] = label
+
             if basename in files and overwrite:
                 self.files.update({basename:tmp})
+                if label not in self.labels:
+                    self.labels.append(lable)
             elif basename not in files:
                 self.files.update({basename:tmp})
+                if label not in self.labels:
+                    self.labels.append(lable)
 
-
-    
+    def numLabels(self):
+        return len(self.labels)
