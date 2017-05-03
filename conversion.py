@@ -15,24 +15,6 @@ Image.MAX_IMAGE_PIXELS = 1000000000
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-
-
-
-
-def writeCsv(images,filePath):
-    with open(filePath, 'w', newline='') as imageFile:
-        writer = csv.writer(imageFile, delimiter=';')
-        headers = ['BASENAME','VH','VV','LABEL']
-        writer.writerow(headers)
-        for basename in images:
-            tmp = [basename]
-            for value in images[basename]:
-                tmp.append(value)
-            writer.writerow(tmp)
-    print('finished writing')
-
-
-
 def fuseImages(locale,notif=True,outputPath=None):
     if notif:
         note = notify.getNotify()
@@ -88,20 +70,13 @@ def labelImages(images): #Takes in
         for basename in images:
             tmp = images[basename]
             image = satImage(tmp[0])
-
-            # image = satImage(image).array()
-            # im = Image.fromarray(image)
-            #
-            # im.thumbnail((1000,1000))
-            # im.show()
+            print(image)
 
             image.show()
             label = input('enter y for flood or n for none: ')
-            label = 'y'
             label = label.lower()
             while label != 'y' and label != 'n':
                 label = input('enter y for flood or n for none: ')
-                print (label)
                 label = label.lower()
             if label == 'y':
                 label = 'Flood'
@@ -130,16 +105,17 @@ def organise(locale):
     stalker.add(imageData)
     stalker.saveTracker()
 
-# stalker = tracker()
+stalker = tracker()
 # stalker.files.update({'a':1})
 # stalker.saveTracker()
 
 
-locale = 'Brimach'
-# stalker = tracker()
-# print(stalker.files)
-# stalker.writeCsv()
-organise(locale)
+locale = 'Simbach'
+# organise(locale)
+stalker.writeCsv()
+print(len(stalker.files))
+
+
 
 
 # a  =['A','B','C']

@@ -60,16 +60,25 @@ class tracker(object):
             writer = csv.writer(imageFile, delimiter=';')
             headers = ['BASENAME','VH','VV','FUSED','LABEL']
             writer.writerow(headers)
-            for basename in files:
+            for basename in self.files:
                 tmp = [basename]
-                for value in files[basename]:
+                for value in self.files[basename]:
                     tmp.append(value)
                 writer.writerow(tmp)
         print('finished writing')
 
-    def toList():
-        for basename in files:
-            label = files[basename][3]
+    def toList(self):
+        imageList = []
+        for basename in self.files:
+            label = self.files[basename][3]
+            for path in self.files[basename]:
+                if os.path.exists(path):
+                    imageList.append([path,label])
+        return imageList
+
+    def reset(self, csvFile = None):
+        self.files = {}
+        self.labels = []
 
     @staticmethod
     def getBasename(filepath):
@@ -135,7 +144,6 @@ class tracker(object):
         elif paths[1] == 'VV':
             return os.path.join(paths[0],'VH')
 
-
     @staticmethod
     #Finds list of VV,VH images and return them in a list of lists
     def findPair(files,type):
@@ -178,6 +186,7 @@ class tracker(object):
         vvhh = tracker.findPair(files,type)
         fusedDir = os.path.join(directory,'Fused')
         imageData = {}
+        fusedFiles = None
         if os.path.exists(fusedDir):
             fusedFiles = tracker.parseFolder(fusedDir,findPosition=False,type='jpeg')
 
@@ -185,9 +194,10 @@ class tracker(object):
             basename = tracker.getBasename(vvhh[i][0])
             tmp = vvhh[i]
             tmp.append('')
-            for fusedImage in fusedFiles:
-                if basename in fusedImage:
-                    tmp[2] = fusedImage
+            if fusedFiles:
+                for fusedImage in fusedFiles:
+                    if basename in fusedImage:
+                        tmp[2] = fusedImage
 
             vvhh[i] = tmp
 

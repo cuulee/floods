@@ -24,7 +24,7 @@ def getImages(locale,startYear,notify=True):
         year = startYear
         endYear = datetime.now().year
         while year < endYear:
-            start = datetime(year, 12,15)
+            start = datetime(year, 11,15)
             end = datetime(year+1, 1,15)
             print(start, end)
             results = api.query(inputLocale,startDate=start,endDate = end)
@@ -40,7 +40,7 @@ def getImages(locale,startYear,notify=True):
 
 
 
-getImages('Donegal',2016)
+getImages('Athlone',2015)
 
 note.push('Fin')
 # print('fin')
