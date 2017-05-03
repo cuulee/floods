@@ -112,8 +112,17 @@ stalker = tracker()
 
 locale = 'Simbach'
 # organise(locale)
-stalker.writeCsv()
-print(len(stalker.files))
+a = None
+for key in stalker.files:
+    a = key
+    print(stalker.files[a])
+    break
+
+# print(stalker.updatePath('/media/karl/My Files2/Project/Resources/JPEGS'))
+# print(stalker.files[a])
+# stalker.saveTracker()
+# stalker.writeCsv('trackerafter.csv')
+
 
 
 

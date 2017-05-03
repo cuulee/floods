@@ -1,9 +1,9 @@
-import os
+import os,sys
 import shutil
 import configparser
 from math import radians, cos, sin, asin, sqrt
 
-
+sys.path.insert(0,'/home/karl/Documents/floods/')
 Config = configparser.ConfigParser()
 Config.read("./Settings.ini")
 

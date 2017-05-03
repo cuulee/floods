@@ -4,9 +4,19 @@ import os
 import csv
 
 
+# order of files array is [vv,vh,fused,label]
+#sort out paths issue
+
+#Currently only works for jpeg/locale/vv/filelocation type structure
+#only needs to be looked into for the updatepath func
+
+
 class tracker(object):
     files = {}
     labels = []
+
+
+
 
     def __init__(self,trackerPath=None):
 
@@ -32,6 +42,26 @@ class tracker(object):
         with open(self.path, 'wb') as output:
             pickle.dump(self,output, pickle.HIGHEST_PROTOCOL)
 
+    def changeLabel(self,old2new):
+        if type(old2new) is not dict:
+            print('Input must be dict of old label key - new label key')
+            return False
+
+        for basename in self.files:
+            tmp = self.files[basename]
+            label = tmp[3]
+            if label in old2new:
+                #Update label if havent alread
+                if label in self.labels:
+                    index = self.labels.index(label)
+                    self.labels[index] = old2new[label]
+                #Change label to new one
+                label = old2new[label]
+
+            tmp[3] = label
+            self.files[basename] = tmp
+        return True
+
     def add(self,images,overwrite = False):
         for basename in images:
             try:
@@ -50,12 +80,42 @@ class tracker(object):
             except IndexError:
                 print(images[basename])
 
+    @staticmethod
+    def getLocale(path):
+        return os.path.split( os.path.split( os.path.split(path)[0])[0])[1]
+
+    @staticmethod
+    def getParentDir(path):
+         return os.path.split(os.path.dirname(path))[1]
+
+    def updatePath(self,path):
+        # if not os.path.exists(path):
+        #     print('Please input a valid path')
+        #     return False
+        for basename in self.files:
+            tmp = self.files[basename]
+            for i in range(len(tmp)-1):
+                oldpath = tmp[i]
+                if oldpath is not '':
+                    imageName = os.path.split(oldpath)[1]
+                    locale = self.getLocale(oldpath)
+                    parent = self.getParentDir(oldpath)
+                    pathConnnection = os.path.join(locale,parent)
+                    newpath = os.path.join(path,pathConnnection)
+                    newPath = os.path.join(newpath,imageName)
+                    tmp[i] = newPath
+            self.files[basename] = tmp
+        return True
+
+
     def numLabels(self):
         return len(self.labels)
 
-    def writeCsv(self):
+    def writeCsv(self,name=None):
         filePath= util.checkFolder('JPEGS',Input=True)
-        filePath= os.path.join(filePath,'tracker.csv')
+        if not name:
+            name = 'tracker.csv'
+        filePath= os.path.join(filePath,name)
         with open(filePath, 'w', newline='') as imageFile:
             writer = csv.writer(imageFile, delimiter=';')
             headers = ['BASENAME','VH','VV','FUSED','LABEL']

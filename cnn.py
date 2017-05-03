@@ -1,6 +1,12 @@
-from resources.cnn import nets
+from resources.resource import nets
+from resources.resource import tracker
+from resources.resource import dataset
+from resources.resource import image as satImage
+import os
 import tensorflow as tf
-
+import numpy as np
+from PIL import Image
+slim = tf.contrib.slim
 
 
 netsList = {'incept':nets.inceptResV2}
@@ -25,6 +31,13 @@ def getNetFunc(name,numClasses,weightDecay=0.0,isTraining=False):
 
     return netFunc
 
+def displayImageTensor(imageTensor):
+    tensor = np.square(imageTensor,axis(2,))
+    im = Image.fromarray(tensor)
+    im.thumbnail(1000,1000)
+    im.show()
+
+
 networkName = 'incept'
 isTraining = True
 
@@ -34,21 +47,36 @@ with tf.Graph().as_default():
 
 
     #Load dataset from tracker class
-    dataset = None
+    stalker = tracker()
 
-    network = getNetFunc(networkName,numClasses=dataset.numClasses,isTraining=isTraining)
+    network = getNetFunc(networkName,numClasses=stalker.numLabels(),isTraining=isTraining)
+
+    fileQueue = dataset.getFileQueue()
+    imagePath,image = dataset.readFile(fileQueue)
+    with tf.Session() as sesh:
+
+        tf.global_variables_initializer().run()
+        coords = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coords)
+
+        imageTensor = sesh.run([image,imagePath])
+        # for proc in psutil.process_iter():
+        #     if proc.name() == "display":
+        #         proc.kill()
+
+        imageTensor = imageTensor[0]
+        imagePath = imageTensor[1].decode('utf-8')
+
+        imageSat = satImage(imagePath)
+        displayImageTensor(imageTensor)
+        coords.request_stop()
+        coords.join(threads)
 
 
 
 
 
-# def main(_):
-#   if not FLAGS.dataset_dir:
-#     raise ValueError('You must supply the dataset directory with --dataset_dir')
-#
-#   tf.logging.set_verbosity(tf.logging.INFO)
-#   with tf.Graph().as_default():
-#
+
 #     ######################
 #     # Select the dataset #
 #     ######################
