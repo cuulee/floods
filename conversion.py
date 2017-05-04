@@ -21,10 +21,10 @@ def fuseImages(locale,notif=True,outputPath=None):
         note.push('Fusing images from %s' % locale)
     else: print('Fusing images from %s' % locale)
 
-    directory = util.checkFolder('Proccessed', Output=True)
+    directory = util.checkFolder('JPEGS', Input=True)
     tiff = util.checkFolder(locale,path=directory)
-    tiffImages = tracker.parseFolder(tiff,findPosition=False, type='tif')
-    tiffPairs = findPair(tiffImages,'tif')
+    tiffImages = tracker.parseFolder(tiff,findPosition=False, type='jpg')
+    tiffPairs = tracker.findPair(tiffImages,'jpg')
 
     if not outputPath:
         outputPath = util.checkFolder(locale, path=directory)
@@ -110,13 +110,19 @@ stalker = tracker()
 # stalker.saveTracker()
 
 
-locale = 'Simbach'
+locale = 'Athlone'
+directory = util.checkFolder('JPEGS', Input=True)
+tiff = util.checkFolder(locale,path=directory)
+tiffImages = tracker.parseFolder(tiff,findPosition=False, type='jpg')
+image = satImage(tiffImages[0])
+image.show()
+# tiffPairs = tracker.findPair(tiffImages,'jpg')
 # organise(locale)
-a = None
-for key in stalker.files:
-    a = key
-    print(stalker.files[a])
-    break
+# a = None
+# for key in stalker.files:
+#     a = key
+#     print(stalker.files[a])
+#     break
 
 # print(stalker.updatePath('/media/karl/My Files2/Project/Resources/JPEGS'))
 # print(stalker.files[a])

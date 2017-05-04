@@ -1,8 +1,9 @@
 from resources.resource import nets
 from resources.resource import tracker
 from resources.resource import dataset
+from resources.resource import preprocess
 from resources.resource import image as satImage
-import os
+import os,sys
 import tensorflow as tf
 import numpy as np
 from PIL import Image
@@ -32,9 +33,9 @@ def getNetFunc(name,numClasses,weightDecay=0.0,isTraining=False):
     return netFunc
 
 def displayImageTensor(imageTensor):
-    tensor = np.square(imageTensor,axis(2,))
+    tensor = np.squeeze(imageTensor,axis=(2,))
     im = Image.fromarray(tensor)
-    im.thumbnail(1000,1000)
+    # im.thumbnail(1000,1000)
     im.show()
 
 
@@ -53,6 +54,7 @@ with tf.Graph().as_default():
 
     fileQueue = dataset.getFileQueue()
     imagePath,image = dataset.readFile(fileQueue)
+    image = preprocess.preprocessImage(image,netsList[networkName].defaultImageSize,netsList[networkName].defaultImageSize,isTraining=True)
     with tf.Session() as sesh:
 
         tf.global_variables_initializer().run()
@@ -60,15 +62,17 @@ with tf.Graph().as_default():
         threads = tf.train.start_queue_runners(coord=coords)
 
         imageTensor = sesh.run([image,imagePath])
+
         # for proc in psutil.process_iter():
         #     if proc.name() == "display":
         #         proc.kill()
 
         imageTensor = imageTensor[0]
-        imagePath = imageTensor[1].decode('utf-8')
-
-        imageSat = satImage(imagePath)
-        displayImageTensor(imageTensor)
+        print(imageTensor)
+        # imagePath = imageTensor[1].decode('utf-8')
+        #
+        # imageSat = satImage(imagePath)
+        # displayImageTensor(imageTensor)
         coords.request_stop()
         coords.join(threads)
 
