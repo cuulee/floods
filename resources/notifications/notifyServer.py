@@ -7,7 +7,7 @@ import ast
 from queue import Queue
 import threading
 import time
-
+import gc
 
 class serverThread (threading.Thread):
     def __init__(self, name, func):
@@ -32,6 +32,7 @@ def receivePush(server):
         # print('Putting %s on queue' % result)
         server.condition.notify_all()
         server.condition.release()
+
 
 def handlePush(server):
     while not server.exitFlag:
@@ -71,7 +72,13 @@ class server(object):
         print('Shutting down messaging server')
 
 
+    def addCommands(self,commands):
+        self.notify.addCommands(commands)
+        self.setAllNotify()
 
+    def setAllNotify(self):
+        for instance in (obj for obj in gc.get_referrers(self.__class__) if isinstance(obj, self.__class__)):
+            instance.notify = self.notify
 
 
 

@@ -124,6 +124,13 @@ class notify(object):
         self.sesh = requests.Session()
         self.sesh.auth = (APIKey,'')
         self.getDevices()
+    def addCommands(self,commands):
+
+        if hasattr(self,'commands'):
+            print('adding')
+            self.commands.update({commands})
+        else:
+            self.commands = commands
 
     def logInit(self):
         try:
@@ -175,8 +182,9 @@ class notify(object):
         for p in pushes:
             if hasattr(p, 'body'):
                 body = p.body.lower().strip()
-                if body in self.commands and p.dismissed == False:
-                    self.runCommand(p,body)
+                if hasattr(self,'commands') and self.commands:
+                    if body in self.commands and p.dismissed == False:
+                        self.runCommand(p,body)
         return serverQuit
 
 

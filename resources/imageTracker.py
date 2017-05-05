@@ -134,11 +134,19 @@ class tracker(object):
             for path in self.files[basename]:
                 if os.path.exists(path):
                     imageList.append([path,label])
+        if len(imageList)==0:
+            print('Check that image paths are correct')
         return imageList
 
     def reset(self, csvFile = None):
         self.files = {}
         self.labels = []
+
+    def getLabel(self,path):
+        basename = self.getBasename(path)
+        if basename in self.files:
+            return self.files[basename][3]
+        else: return None
 
     @staticmethod
     def getBasename(filepath):

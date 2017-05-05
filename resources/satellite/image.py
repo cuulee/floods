@@ -255,6 +255,7 @@ class image:
         # imgBand = img.GetRasterBand(1)
         # imgBand.WriteArray(array)
 
+    @staticmethod
     def killDisplay():
         for proc in psutil.process_iter():
             if proc.name() == "display":
@@ -651,6 +652,7 @@ class image:
             fusedImage = self.fuseImages(array1, array2, mode,level)
         except MemoryError:
             print('Unable to fuse %s' % self.name)
+            raise
             return
         if not outputFolder:
             outputFolder = util.checkFolder('Fusion', Output=True)
