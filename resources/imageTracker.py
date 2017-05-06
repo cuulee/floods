@@ -107,9 +107,43 @@ class tracker(object):
             self.files[basename] = tmp
         return True
 
+    def getLocaleList(self,locale):
+        tmp = self.toList()
+        tmp = [image[0] for image in tmp if self.getLocale(image[0]) == locale]
+        return tmp
+
+    def getLabelList(self,label):
+        listImage = self.toList()
+        tmp = []
+        counter = {'0':0, '1':0}
+        for image in listImage:
+            count = counter[image[1]]
+            count +=1
+            counter.update({image[1]:count})
+            if str(image[1]) == str(label):
+                tmp.append(image)
+        print(counter)
+        return tmp
 
     def numLabels(self):
         return len(self.labels)
+
+    def loadCsv(self,name):
+        filePath = util.checkFolder('JPEGS',Input = True)
+        filePath = os.path.join(filePath,name)
+        images = {}
+        with open(filePath,'r') as imageFile:
+            read = csv.reader(imageFile,delimiter=';')
+            first = True
+            for row in read:
+                if first:
+                    first = False
+                else:
+                    basename = row.pop(0)
+                    images.update({basename:row})
+        return images
+
+
 
     def writeCsv(self,name=None):
         filePath= util.checkFolder('JPEGS',Input=True)
@@ -141,6 +175,8 @@ class tracker(object):
     def reset(self, csvFile = None):
         self.files = {}
         self.labels = []
+        self.add(self.loadCsv(csvFile))
+
 
     def getLabel(self,path):
         basename = self.getBasename(path)

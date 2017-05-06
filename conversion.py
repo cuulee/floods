@@ -116,9 +116,9 @@ def labelImages(images): #Takes in
                 label = input('enter y for flood or n for none: ')
                 label = label.lower()
             if label == 'y':
-                label = 'Flood'
+                label = '1'
             else:
-                label = 'None'
+                label = '0'
             satImage.killDisplay()
 
             tmp.append(label)
@@ -139,10 +139,23 @@ def organise(locale):
     imageData = tracker.findImages(images,'jpg',directory)
     imageData = labelImages(imageData)
     stalker = tracker()
+
     stalker.add(imageData)
     stalker.saveTracker()
 
 stalker = tracker()
+
+# # stalker.writeCsv(name='trackerbeforeAt.csv')
+# print(stalker.labels)
+# print(len(stalker.getLabelList('1')))
+
 locale = 'Athlone'
-inputPath = util.checkFolder('Proccessed',Output=True)
-fuseImages(locale,inputPath=inputPath)
+print(len(stalker.toList()))
+stalker.reset('trackerbeforeAt.csv')
+print(len(stalker.toList()))
+stalker.saveTracker()
+
+# organise(locale)
+
+# inputPath = util.checkFolder('Proccessed',Output=True)
+# fuseImages(locale,inputPath=inputPath)
