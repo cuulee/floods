@@ -64,25 +64,29 @@ class server(object):
         receiver = threading.Thread(target=receivePush, args=(self,))
         handler = threading.Thread(target=handlePush, args=(self,))
         print('Stating messaging server')
-        # self.condition.acquire()
         receiver.start()
         handler.start()
         receiver.join()
         handler.join()
         print('Shutting down messaging server')
 
-
     def addCommands(self,commands):
+        print('Adding command')
+        self.notify.push('adding command')
         self.notify.addCommands(commands)
         self.setAllNotify()
 
     def setAllNotify(self):
+        print('faduioasdjw')
         for instance in (obj for obj in gc.get_referrers(self.__class__) if isinstance(obj, self.__class__)):
             instance.notify = self.notify
 
 
-
+    @staticmethod
     def getServer(target=None,logging=False, commands=None):
         pushKey = util.configSectionMap("Keys")['pushbullet']
         return server(pushKey,target=None,logging=False, commands=commands)
         # return notify(pushKey,target=target,logging=logging)
+
+    def getServerThread():
+        return threading.Thread(target=server.getServer)

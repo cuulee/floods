@@ -183,10 +183,10 @@ class notify(object):
             if hasattr(p, 'body'):
                 body = p.body.lower().strip()
                 if hasattr(self,'commands') and self.commands:
+                    print('checking push')
                     if body in self.commands and p.dismissed == False:
                         self.runCommand(p,body)
         return serverQuit
-
 
     def runCommand(self,p,body):
         # command = self.commands[body]

@@ -1,4 +1,4 @@
-import os
+import os, gc, traceback,  sys
 import gdal
 from osgeo import gdalconst
 import datetime
@@ -7,13 +7,13 @@ from resources.resource import util
 from subprocess import Popen
 # from arcgis.gis import GIS
 from IPython.display import display
-# from skimage import io
+from skimage import io
 import pywt
-
+import numpy as np
 from PIL import Image, ImageFile
 import numpy as np
 import psutil
-
+from pympler import asizeof
 
 Image.MAX_IMAGE_PIXELS = 1000000000
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -383,13 +383,26 @@ class image:
 
     #ONLY WORKS FOR SINGLE BAND
     def array(self,band=None):
+
         try:
             if not band:
-                return self.dataset.GetRasterBand(1).ReadAsArray()
+
+                tmp = np.asarray(self.dataset.GetRasterBand(1).ReadAsArray())
+                return tmp
             else:
-                return self.dataset.GetRasterBand(band).ReadAsArray()
+                return np.asarray(self.dataset.GetRasterBand(band).ReadAsArray())
         except ValueError:
             return None
+        #
+        # try:
+        #     io.imread(self.path,plugin='gdal')
+        # except:
+        #     pass
+        #
+        # try:
+        #     io.imread(self.path)
+        # except:
+        #     raise
 
     #Display map of image NEEDS WORK
     # def toMap(self):
@@ -640,6 +653,7 @@ class image:
         print('Created fused image  :%s' % oName)
 
     def fuseWith(self,image2, outputFolder=None, mode = None, level = None):
+
         array1 = self.array()
         array2 = image2.array()
 
@@ -664,15 +678,14 @@ class image:
 
     def fuseImages(self, array1, array2, mode, level): # Return fused images as array
 
-        coeff1 = pywt.wavedec2( array1, mode, level=level)
-        coeff2 = pywt.wavedec2( array2, mode, level=level)
+        coeff1 = np.asarray(pywt.wavedec2( array1, mode, level=level))
+        coeff2 = np.asarray(pywt.wavedec2( array2, mode, level=level))
 
         coApprx1 = coeff1.pop(0)
         coApprx2 = coeff2.pop(0)
         sumCoApp = coApprx1 + coApprx2
         coApprx = sumCoApp/2
-        meanCoeff = [coApprx]
-
+        meanCoeff = np.asarray([coApprx])
         for levelA in coeff1:
             levelB = list(coeff2.pop(0))
             tempLevel = []
@@ -681,6 +694,21 @@ class image:
                 sumAxis = axisA + axisB
                 meanAxis = sumAxis/2
                 tempLevel.append(meanAxis)
+            tempLevel = np.asarray(tempLevel)
             meanCoeff.append(tuple(tempLevel))
 
-        return pywt.waverec2(meanCoeff,mode)
+        del coApprx1
+        del coApprx2
+        del coApprx
+        gc.collect()
+        try:
+            return pywt.waverec2(meanCoeff,mode)
+        except MemoryError:
+            print(meanCoeff.dtype)
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print( "*** print_tb:")
+            traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+            print( "*** print_exception:")
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      limit=2, file=sys.stdout)
+            raise
