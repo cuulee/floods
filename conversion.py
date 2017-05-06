@@ -62,7 +62,8 @@ def fuseImages(locale,inputPath=None,notif=True,outputPath=None):
                 time.sleep(30)
     except KeyboardInterrupt:
         print('Exiting')
-        server.exitFlag = 1
+        if server:
+            server.exitFlag = 1
         sys.exit()
 
         # print(imageVV.array().shape)
