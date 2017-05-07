@@ -1,6 +1,7 @@
 from resources.resource import nets
 from resources.resource import tracker
 from resources.resource import dataset
+from resources.resource import notify
 from resources.resource import preprocess
 from resources.resource import modelDeploy
 from resources.resource import image as satImage
@@ -31,6 +32,7 @@ numPSTasks = 0
 optim = 'adam'
 trainDir = '/tmp/tfmodel/'
 
+note = notify.getNotify()
 
 #Not sure where weightDecay is used
 def getNetFunc(name,numClasses,weightDecay=0.0,isTraining=False):
@@ -80,6 +82,9 @@ def configOptimizer(learningRate, optim):
 
 def initFunc():
     return None
+
+
+note.push('starting datset')
 
 with tf.Graph().as_default():
 
@@ -168,7 +173,11 @@ with tf.Graph().as_default():
     summaries |= set(tf.get_collection(tf.GraphKeys.SUMMARIES,fCloneScope))
 
     summaryOp = tf.summary.merge(list(summaries),name='summaryOp')
+    note.push('starting training')
+
 
     slim.learning.train(trainTensor,logdir=trainDir,is_chief=True,init_fn=initFunc(),
                         summary_op=summaryOp, number_of_steps=None, log_every_n_steps=10,
                         save_summaries_secs=600, save_interval_secs=600, sync_optimizer=None)
+
+    note.push('Finished training')

@@ -144,16 +144,35 @@ def organise(locale):
     stalker.saveTracker()
 
 stalker = tracker()
-
+images = [stalker.toList()[0]]
+allImages = stalker.getRotateList(images)
+filePaths = [image[0] for image in allImages]
+labels = [int(image[1]) for image in allImages]
+print(labels)
+# for image in im:
+#     if len(image) <=2:
+#         print(image)
+# labels = [int(image[1]) for image in im]
+#
+# print(labels)
+# labels = [int(image[1]) for image in allImages]
 # # stalker.writeCsv(name='trackerbeforeAt.csv')
 # print(stalker.labels)
 # print(len(stalker.getLabelList('1')))
+# images = stalker.toList()
+# allImages = stalker.getRotateList(images)
+# print(images[0])
+# filePaths = [image[0] for image in allImages]
+# labels = [int(image[1]) for image in allImages)]
+# print(stalker.getRoated(images))
 
-locale = 'Athlone'
-print(len(stalker.toList()))
-stalker.reset('trackerbeforeAt.csv')
-print(len(stalker.toList()))
-stalker.saveTracker()
+
+
+# locale = 'Athlone'
+# print(len(stalker.toList()))
+# stalker.reset('trackerbeforeAt.csv')
+# print(len(stalker.toList()))
+# stalker.saveTracker()
 
 # organise(locale)
 

@@ -2,8 +2,7 @@ from resources.resource import util
 import pickle
 import os
 import csv
-
-
+from PIL import Image
 # order of files array is [vv,vh,fused,label]
 #sort out paths issue
 
@@ -15,13 +14,8 @@ class tracker(object):
     files = {}
     labels = []
 
-
-
-
     def __init__(self,trackerPath=None):
-
         self.loadTracker()
-
 
     def loadTracker(self):
         trackName = 'tracker.pkl'
@@ -188,6 +182,48 @@ class tracker(object):
     def getBasename(filepath):
         name = os.path.split(filepath)[1]
         return os.path.splitext(name)[0]
+
+    @staticmethod
+    def rotate(path,degree,image):
+        if os.path.exists(path):
+            return path
+        else:
+            imR = image.rotate(degree)
+            imR.save(path)
+            return path
+
+
+    @staticmethod
+    def getRotate(filepath):
+        images = []
+        dirpath = os.path.split(filepath)[0]
+        dirpath = util.checkFolder('Rotate',path=dirpath)
+        name = tracker.getBasename(filepath)
+
+        name45 = os.path.join(dirpath, name + '45' + '.jpg')
+        name90 =   os.path.join(dirpath, name + '90' + '.jpg')
+        name135 =  os.path.join(dirpath, name +'135' + '.jpg')
+        imageOG = Image.open(filepath)
+
+        images.append(tracker.rotate(name45,45,imageOG))
+        images.append(tracker.rotate(name90,90,imageOG))
+        images.append(tracker.rotate(name135,135,imageOG))
+        return images
+
+    @staticmethod
+    def getRotateList(images):
+        print('Rotating images')
+        tmp = []
+        for image in images:
+            value = image[1]
+            tmp.append(image)
+            rotatedIm = tracker.getRotate(image[0])
+            for im in rotatedIm:
+                tmp.append([im,value])
+        print('Finished rotating images')
+
+        return tmp
+
 
     @staticmethod
     def isVer(path):
