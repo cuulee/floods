@@ -24,11 +24,17 @@ def readFile(fileQueue):
 def getFileQueue():
     images = stalker.toList()
     allImages = stalker.getRotateList(images)
-    filePaths = [image[0] for image in allImages]
-    labels = [int(image[1]) for image in allImages]
+    balancedList =stalker.getBalancedList(allImages,[100,100])
+    filePaths = [image[0] for image in balancedList]
+    labels = [int(image[1]) for image in balancedList]
+    counter = {0:0,1:0}
+    for l in labels:
+        value = counter[l]
+        value += 1
+        counter.update({l:value})
     # filesPaths = [image[0] for image in stalker.toList() ]
     # labels = [int(stalker.getLabel(image)) for image in filesPaths]
-    return tf.train.slice_input_producer([filePaths,labels])
+    return tf.train.slice_input_producer([filePaths,labels]), counter
 
 def getDataset():
     filename_queue = tf.train.string_input_producer(stalker.toList()[0])

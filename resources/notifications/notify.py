@@ -50,6 +50,8 @@ class device(object):
             print('Error deleting pushes')
 
 class push(object):
+
+
     def __init__(self, pushInfo, sesh, url=  'https://api.pushbullet.com/v2/' ):
         try:
             self.id = pushInfo['iden']
@@ -89,6 +91,7 @@ class push(object):
             print('Error deleting push')
 
 class notify(object):
+    serverFunc = 'shutdown server'
     try:
         defaultDevice = util.configSectionMap("Devices")['main']
     except:
@@ -116,9 +119,9 @@ class notify(object):
 
             else:
                 print('Commands must be in name : func format')
-                self.commands = None
+                self.commands = {}
         else:
-            self.commands = None
+            self.commands = {}
 
         self.url = url if url.endswith('/') else url + '/'
         self.sesh = requests.Session()
@@ -127,8 +130,7 @@ class notify(object):
     def addCommands(self,commands):
 
         if hasattr(self,'commands'):
-            print('adding')
-            self.commands.update({commands})
+            self.commands.update(commands)
         else:
             self.commands = commands
 
@@ -160,7 +162,7 @@ class notify(object):
         url = urljoin(self.url, self.options['p'])
         response = self.sesh.post(url, data=data, auth=self.sesh.auth)
 
-    def getPushes(self, active = True):
+    def getPushes(self,server = None,active = True):
         now = time.time()
         timeWindow = self.__getTimeWindow()
         data = {'modified_after' :timeWindow,
@@ -171,34 +173,36 @@ class notify(object):
 
         pushes = [push(pushMessage, self.sesh) for pushMessage in  response.json()['pushes'] ]
         activePushes = [p for p in pushes if p.active == True]
-        return self.checkPushes(activePushes)
+        return self.checkPushes(activePushes,server)
 
     def deleteMainPush(self):
         if hasattr(self, 'mainDevice'):
             self.mainDevice.deletePushes()
 
-    def checkPushes(self,pushes):
+    def checkPushes(self,pushes,server=None):
         serverQuit = False
+        if hasattr(self,'commands') and self.serverFunc not in self.commands:
+            self.commands.update({'shutdown server':self.shutdownServer})
+
+
         for p in pushes:
             if hasattr(p, 'body'):
                 body = p.body.lower().strip()
                 if hasattr(self,'commands') and self.commands:
-                    print('checking push')
                     if body in self.commands and p.dismissed == False:
-                        self.runCommand(p,body)
+                        self.runCommand(p,body,server)
         return serverQuit
 
-    def runCommand(self,p,body):
-        # command = self.commands[body]
-        #
-        # notifyMethod = getattr(self, command, None)
-        # if callable(notifyMethod):
-        #     locals()[command]()
-        # else:
-        #     locals()[command]()
-        # # if self
+    @staticmethod
+    def shutdownServer(server):
+        server.exitFlag=1
+
+    def runCommand(self,p,body, server):
         self.push('Ok running %s function' % body)
-        self.commands[body]()
+        if body == self.serverFunc:
+            self.commands[body](server)
+        else:
+            self.commands[body]()
         p.read()
 
     def printing(self):

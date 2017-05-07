@@ -144,11 +144,27 @@ def organise(locale):
     stalker.saveTracker()
 
 stalker = tracker()
-images = [stalker.toList()[0]]
+
+images = stalker.toList()
 allImages = stalker.getRotateList(images)
-filePaths = [image[0] for image in allImages]
-labels = [int(image[1]) for image in allImages]
-print(labels)
+balancedList =stalker.getBalancedList(allImages,[100,100])
+filePaths = [image[0] for image in balancedList]
+labels = [int(image[1]) for image in balancedList]
+
+for l in labels:
+    if l is 0:
+        print('wow')
+    else:
+        print(' ')
+#
+# counter ={0:0,1:0}
+# for l in labels:
+#     value = counter[l]
+#     value +=1
+#     counter.update({l:value})
+#
+# print(counter)
+
 # for image in im:
 #     if len(image) <=2:
 #         print(image)

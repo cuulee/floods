@@ -103,7 +103,12 @@ with tf.Graph().as_default():
     stalker = tracker()
     network = getNetFunc(networkName,numClasses=stalker.numLabels(),isTraining=isTraining)
 
-    fileQueue = dataset.getFileQueue()
+    fileQueue, counter = dataset.getFileQueue()
+    tmp = ''
+    for l in counter:
+        value = counter[l]
+        tmp += ' Label %d , Value %d' % (l,value)
+    note.push('Dataset size : %s' %tmp)
 
     image,label,path = dataset.readFile(fileQueue)
 

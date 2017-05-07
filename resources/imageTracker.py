@@ -3,6 +3,7 @@ import pickle
 import os
 import csv
 from PIL import Image
+from random import shuffle
 # order of files array is [vv,vh,fused,label]
 #sort out paths issue
 
@@ -137,8 +138,6 @@ class tracker(object):
                     images.update({basename:row})
         return images
 
-
-
     def writeCsv(self,name=None):
         filePath= util.checkFolder('JPEGS',Input=True)
         if not name:
@@ -223,6 +222,63 @@ class tracker(object):
         print('Finished rotating images')
 
         return tmp
+
+
+    def getBalancedList(self,images,ratioList,shuffleList=True):
+        if len(self.labels) != len(ratioList):
+            raise ValueError('Ratio must match amount of labels')
+
+        splitImages = {}
+        for label in self.labels:
+            splitImages.update({label:[]})
+
+        for image in images:
+            try:
+                tmp = splitImages[image[1]]
+                tmp.append(image[0])
+                splitImages.update({image[1]:tmp})
+
+            except ValueError:
+                print('Label in images was not found in tracker, please update tracker')
+            except IndexError:
+                print('Image does not contain label')
+
+        splitRatio = []
+        total =len(images)
+
+        for ratio in ratioList:
+            amount = int((total/ 100) * ratio)
+            splitRatio.append(amount)
+
+        for label in splitImages:
+            splitAmount =  splitRatio[self.labels.index(str(label))]
+            if len(splitImages[label]) > splitAmount:
+                tmp = splitImages[label]
+                tmp = tmp[:splitAmount]
+                splitImages.update({label:tmp})
+            elif len(splitImages[label]) < splitAmount:
+                boostedImages = [ image for image in splitImages[label]]
+                diff = splitAmount -len(boostedImages)
+
+                while diff > 0:
+                    shuffle(splitImages[label])
+                    boostedImages += splitImages[label][:diff]
+
+                    diff = diff - len(splitImages[label])
+                splitImages.update({label:boostedImages})
+
+
+
+        balanceList = []
+
+        for label in splitImages:
+            for image in splitImages[label]:
+                balanceList.append([image,int(label)])
+
+        if shuffleList:
+            shuffle(balanceList)
+        return balanceList
+
 
 
     @staticmethod

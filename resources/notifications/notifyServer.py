@@ -25,29 +25,34 @@ class serverThread (threading.Thread):
 
 
 def receivePush(server):
-    while not server.exitFlag:
-        result =  ast.literal_eval(server.ws.recv())
-        server.condition.acquire()
-        server.pushQueue.put(result)
-        # print('Putting %s on queue' % result)
-        server.condition.notify_all()
-        server.condition.release()
-
+    try:
+        while not server.exitFlag:
+            result =  ast.literal_eval(server.ws.recv())
+            server.condition.acquire()
+            server.pushQueue.put(result)
+            # print('Putting %s on queue' % result)
+            server.condition.notify_all()
+            server.condition.release()
+    except KeyboardInterrupt:
+        pass
 
 def handlePush(server):
-    while not server.exitFlag:
-        server.condition.acquire()
-        if  server.pushQueue.empty():
-            server.condition.wait()
+    try:
+        while not server.exitFlag:
+            server.condition.acquire()
+            if server.pushQueue.empty():
+                server.condition.wait()
 
-        else:
-            push = server.pushQueue.get()
-            if push["type"] == 'tickle':
-                if push["subtype"] == 'push':
-                    server.notify.getPushes()
+            if not server.pushQueue.empty():
+                push = server.pushQueue.get()
+                if push["type"] == 'tickle':
+                    if push["subtype"] == 'push':
 
-        server.condition.release()
+                        server.notify.getPushes(server=server)
 
+            server.condition.release()
+    except KeyboardInterrupt:
+        pass
 
 class server(object):
     exitFlag = 0
@@ -61,23 +66,33 @@ class server(object):
         self.notify = notify.getNotify(target,logging,commands)
         self.ws = create_connection(self.url)
 
-        receiver = threading.Thread(target=receivePush, args=(self,))
-        handler = threading.Thread(target=handlePush, args=(self,))
+        self.receiver = threading.Thread(target=receivePush, args=(self,))
+        self.handler = threading.Thread(target=handlePush, args=(self,))
+
+    def start(self):
         print('Stating messaging server')
-        receiver.start()
-        handler.start()
-        receiver.join()
-        handler.join()
-        print('Shutting down messaging server')
+        self.serverThread = threading.Thread(target=self.startThreads())
+
+        self.serverThread.start()
+
+    def startThreads(self):
+        self.receiver.start()
+        self.handler.start()
+
+    def shutdown(self):
+        print('Shutting down messaging server, can take up to 10 seconds')
+        self.exitFlag = 1
+        self.receiver.join()
+        self.handler.join()
+        self.serverThread.join()
+
+        # print('Shutting down messaging server')
 
     def addCommands(self,commands):
-        print('Adding command')
-        self.notify.push('adding command')
         self.notify.addCommands(commands)
         self.setAllNotify()
 
     def setAllNotify(self):
-        print('faduioasdjw')
         for instance in (obj for obj in gc.get_referrers(self.__class__) if isinstance(obj, self.__class__)):
             instance.notify = self.notify
 
