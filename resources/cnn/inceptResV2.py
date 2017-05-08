@@ -190,7 +190,7 @@ def inceptResV2(inputs, numClasses = 2, reuse=None, scope='IncepResV2',
                 with tf.variable_scope('Logits'):
                     net = slim.avg_pool2d(net, net.get_shape()[1:3], padding = 'VALID',
                                           scope = 'AvgPool_L1a')
-                    net = slim.dropout(net, dropKeepProb, scope = 'Dropout_L1b')
+                    net = slim.dropout(net, dropKeepProb, is_training=isTraining, scope = 'Dropout_L1b')
                     net = slim.flatten(net)
 
                     endPoints['PreLogits'] = net

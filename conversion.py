@@ -147,16 +147,18 @@ stalker = tracker()
 
 images = stalker.toList()
 allImages = stalker.getRotateList(images)
-balancedList =stalker.getBalancedList(allImages,[100,100])
-filePaths = [image[0] for image in balancedList]
-labels = [int(image[1]) for image in balancedList]
+# print(len(allImages))
+flipImages = stalker.getFlippedList(allImages)
+# print(len(flipImages))
+# train, evalList = stalker.getTrainEvallist(allImages,5)
+# print(len(train))
+# print(len(evalList))
+# print
+# balancedList =stalker.getBalancedList(allImages,[100,100])
+# filePaths = [image[0] for image in balancedList]
+# labels = [int(image[1]) for image in balancedList]
 
-for l in labels:
-    if l is 0:
-        print('wow')
-    else:
-        print(' ')
-#
+
 # counter ={0:0,1:0}
 # for l in labels:
 #     value = counter[l]

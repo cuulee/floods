@@ -4,7 +4,7 @@ from resources.resource import util
 
 
 
-
+import random
 from resources.imageTracker import tracker
 
 slim = tf.contrib.slim
@@ -21,9 +21,27 @@ def readFile(fileQueue):
         raise
 
 
-def getFileQueue():
+def getFileQueue(isTraining,shuffle=True,ratio = None, eval = False):
     images = stalker.toList()
-    allImages = stalker.getRotateList(images)
+    if not eval:
+        allImages = stalker.getRotateList(images)
+        allImages = stalker.getFlippedList(allImages)
+
+        if isTraining:
+            if not ratio:
+                ratio = 5
+            allImages,evalList = stalker.getTrainEvallist(allImages,ratio)
+            stalker.addTrain(allImages)
+            stalker.addEval(evalList)
+            stalker.saveTracker()
+    else:
+        if hasattr(stalker,'evalList'):
+            allImages = stalker.evalList()
+        else:
+            allImages = stalker.getRotateList(images)
+
+    if shuffle:
+        random.shuffle(allImages)
     balancedList =stalker.getBalancedList(allImages,[100,100])
     filePaths = [image[0] for image in balancedList]
     labels = [int(image[1]) for image in balancedList]

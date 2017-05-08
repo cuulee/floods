@@ -29,6 +29,10 @@ class tracker(object):
                     track =  pickle.load(input)
                     self.files = track.files
                     self.labels = track.labels
+                    if hasattr(track,'trainList'):
+                        self.trainList = track.trainList
+                    if hasattr(track,'evalLIst'):
+                        self.evalList = track.evalList
             except:
                 return
         else: return
@@ -74,6 +78,12 @@ class tracker(object):
                         self.labels.append(label)
             except IndexError:
                 print(images[basename])
+
+    def addTrain(self, images):
+        self.trainList = images
+
+    def addEval(self,images):
+        self.evalList = images
 
     @staticmethod
     def getLocale(path):
@@ -170,12 +180,52 @@ class tracker(object):
         self.labels = []
         self.add(self.loadCsv(csvFile))
 
-
     def getLabel(self,path):
         basename = self.getBasename(path)
         if basename in self.files:
             return self.files[basename][3]
         else: return None
+
+    def getTrainEvallist(self,images,ratio):
+        print(len(images))
+        splitImages = {}
+        for label in self.labels:
+            splitImages.update({label:[]})
+
+        for image in images:
+            try:
+                tmp = splitImages[image[1]]
+                tmp.append(image[0])
+                splitImages.update({image[1]:tmp})
+
+            except ValueError:
+                print('Label in images was not found in tracker, please update tracker')
+            except IndexError:
+                print('Image does not contain label')
+
+        splitAmount = []
+        for value in self.labels:
+            total = len(splitImages[value])
+            amount = int((total/100) * ratio)
+            splitAmount.append(amount)
+
+
+        trainList = []
+        evalList = []
+        for label in splitImages:
+            amount =  splitAmount[self.labels.index(str(label))]
+            traintmp = splitImages[label][amount:]
+            evaltmp = splitImages[label][:amount]
+            total = len(splitImages[label])
+            for path in traintmp:
+                tmp = [path,label]
+                trainList.append(tmp)
+            for path in evaltmp:
+                tmp = [path,label]
+                evalList.append(tmp)
+
+        return trainList, evalList
+        # print(splitAmount)
 
     @staticmethod
     def getBasename(filepath):
@@ -191,6 +241,36 @@ class tracker(object):
             imR.save(path)
             return path
 
+    @staticmethod
+    def flip(path,image):
+        if os.path.exists(path):
+            return path
+        else:
+            imF = image.transpose(Image.FLIP_LEFT_RIGHT)
+            imF.save(path)
+            return path
+
+    @staticmethod
+    def getFlip(filepath):
+        dirpath = os.path.split(filepath)[0]
+        dirpath = util.checkFolder('Flip',path = dirpath)
+        name = tracker.getBasename(filepath)
+        nameFlip = os.path.join(dirpath,name + 'f.jpg')
+        imageOG = Image.open(filepath)
+        return tracker.flip(nameFlip,imageOG)
+
+    @staticmethod
+    def getFlippedList(images):
+        tmp = []
+        print(len(images))
+        for image in images:
+            value = image[1]
+            tmp.append(image)
+            flipIm = tracker.getFlip(image[0])
+            tmp.append([flipIm,value])
+
+        print(len(tmp))
+        return tmp
 
     @staticmethod
     def getRotate(filepath):
@@ -211,7 +291,6 @@ class tracker(object):
 
     @staticmethod
     def getRotateList(images):
-        print('Rotating images')
         tmp = []
         for image in images:
             value = image[1]
@@ -219,10 +298,8 @@ class tracker(object):
             rotatedIm = tracker.getRotate(image[0])
             for im in rotatedIm:
                 tmp.append([im,value])
-        print('Finished rotating images')
 
         return tmp
-
 
     def getBalancedList(self,images,ratioList,shuffleList=True):
         if len(self.labels) != len(ratioList):
@@ -278,8 +355,6 @@ class tracker(object):
         if shuffleList:
             shuffle(balanceList)
         return balanceList
-
-
 
     @staticmethod
     def isVer(path):
