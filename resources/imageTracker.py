@@ -3,7 +3,7 @@ import pickle
 import os
 import csv
 from PIL import Image
-from random import shuffle
+import random
 # order of files array is [vv,vh,fused,label]
 #sort out paths issue
 
@@ -19,9 +19,9 @@ class tracker(object):
         self.loadTracker()
 
     def loadTracker(self):
-        trackName = 'tracker.pkl'
-        trackerPath = util.checkFolder('JPEGS',Input=True)
-        self.path = os.path.join(trackerPath,trackName)
+        trackerName = 'imageTracker.pkl'
+        trackerPath = util.checkFolder('trackers')
+        self.path = os.path.join(trackerPath,trackerName)
 
         if os.path.isfile(self.path):
             try:
@@ -38,6 +38,7 @@ class tracker(object):
         else: return
 
     def saveTracker(self):
+
         with open(self.path, 'wb') as output:
             pickle.dump(self,output, pickle.HIGHEST_PROTOCOL)
 
@@ -127,7 +128,6 @@ class tracker(object):
             counter.update({image[1]:count})
             if str(image[1]) == str(label):
                 tmp.append(image)
-        print(counter)
         return tmp
 
     def numLabels(self):
@@ -187,7 +187,6 @@ class tracker(object):
         else: return None
 
     def getTrainEvallist(self,images,ratio):
-        print(len(images))
         splitImages = {}
         for label in self.labels:
             splitImages.update({label:[]})
@@ -262,14 +261,12 @@ class tracker(object):
     @staticmethod
     def getFlippedList(images):
         tmp = []
-        print(len(images))
         for image in images:
             value = image[1]
             tmp.append(image)
             flipIm = tracker.getFlip(image[0])
             tmp.append([flipIm,value])
 
-        print(len(tmp))
         return tmp
 
     @staticmethod
@@ -338,7 +335,7 @@ class tracker(object):
                 diff = splitAmount -len(boostedImages)
 
                 while diff > 0:
-                    shuffle(splitImages[label])
+                    random.shuffle(splitImages[label])
                     boostedImages += splitImages[label][:diff]
 
                     diff = diff - len(splitImages[label])
@@ -353,7 +350,7 @@ class tracker(object):
                 balanceList.append([image,int(label)])
 
         if shuffleList:
-            shuffle(balanceList)
+            random.shuffle(balanceList)
         return balanceList
 
     @staticmethod
@@ -477,3 +474,27 @@ class tracker(object):
             imageData.update({basename:vvhh[i]})
 
         return imageData
+
+    def getData(self, eval= False, isTraining=True, ratio=None, shuffle=True):
+        images = self.toList()
+        if not eval:
+            allImages = self.getRotateList(images)
+            allImages = self.getFlippedList(allImages)
+
+            if isTraining:
+                if not ratio:
+                    ratio = 5
+                allImages,evalList = self.getTrainEvallist(allImages,ratio)
+                self.addTrain(allImages)
+                self.addEval(evalList)
+                # self.saveTracker()
+        else:
+            if hasattr(self,'evalList'):
+                allImages = self.evalList()
+            else:
+                allImages = self.getRotateList(images)
+
+        if shuffle:
+            random.shuffle(allImages)
+            random.shuffle(evalList)
+        return allImages, evalList

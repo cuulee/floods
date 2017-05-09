@@ -144,11 +144,12 @@ def organise(locale):
     stalker.saveTracker()
 
 stalker = tracker()
-
-images = stalker.toList()
-allImages = stalker.getRotateList(images)
-# print(len(allImages))
-flipImages = stalker.getFlippedList(allImages)
+# stalker.saveTracker()
+print(len(stalker.toList()))
+# images = stalker.toList()
+# allImages = stalker.getRotateList(images)
+# # print(len(allImages))
+# flipImages = stalker.getFlippedList(allImages)
 # print(len(flipImages))
 # train, evalList = stalker.getTrainEvallist(allImages,5)
 # print(len(train))

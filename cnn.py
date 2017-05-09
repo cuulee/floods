@@ -1,5 +1,7 @@
 from resources.resource import nets
 from resources.resource import tracker
+from resources.resource import modTracker
+
 from resources.resource import dataset
 from resources.resource import notify
 from resources.resource import preprocess
@@ -86,117 +88,167 @@ def initFunc():
     return None
 
 
-with tf.Graph().as_default():
+def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.01, learningRateDecayFactor=0.94,
+          batchSize=35, preprocessThread = 2, numClones = 1, cloneCpu = False,
+          tasks = 0, workerReplias = 1, numPSTasks = 0, oprim = 'adam',
+          steps = 1000, trainDir = '/tmp/tf/'):
+    # networkName = 'incept'
+    # isTraining = True
+    # learningRate = 0.01
+    # learningRateDecayFactor = 0.94
+    # batchSize = 30
+    # preprocessThread = 2
+    # numClones =1
+    # cloneCpu = False
+    # tasks = 0
+    # workerReplias = 1
+    # numPSTasks = 0
+    # optim = 'adam'
+    # steps = 20000
 
-    # Use for parallelism, cant beat google
-    deployConfig = modelDeploy.DeploymentConfig(
-        num_clones=numClones,
-        clone_on_cpu=cloneCpu,
-        replica_id=tasks,
-        num_replicas=workerReplias,
-        num_ps_tasks=numPSTasks)
-
-    with tf.device(deployConfig.variables_device()):
-        globalStep = slim.create_global_step()
-
-    #Load dataset from tracker class
+    modelStalker = modTracker()
     stalker = tracker()
-    network = getNetFunc(networkName,numClasses=stalker.numLabels(),isTraining=isTraining)
+    # modelStalker.reset()
+    # modelStalker.saveTracker()
+    # return
+    trainDir = modelStalker.load(networkName,status = status)
 
-    fileQueue, counter = dataset.getFileQueue(isTraining,5)
-    tmp = ''
-    sampleSize = 0
-    for l in counter:
-        value = counter[l]
-        sampleSize += value
-        tmp += ' Label %d , Value %d' % (l,value)
-    note.push('Dataset size : %s' %tmp)
+    if status is 'new':
+        trainSet,evalSet = stalker.getData(isTraining=isTraining)
+        modelStalker.addData(trainDir,[trainSet,evalSet])
+        datalist = trainSet
+        modelStalker.saveTracker()
 
-    image,label,path = dataset.readFile(fileQueue)
-
-    height,width = netsList[networkName].defaultImageSize, netsList[networkName].defaultImageSize
-    image = tf.image.resize_images(image,[height,width],method=0)
-    # image = preprocess.preprocessImage(image,netsList[networkName].defaultImageSize,netsList[networkName].defaultImageSize,isTraining=True)
-
-    images,labels = tf.train.batch([image,label],batch_size=batchSize, num_threads=preprocessThread, capacity=2*batchSize)
-    labelsOneHot = slim.one_hot_encoding(labels, len(stalker.labels))
-    batchQueue = slim.prefetch_queue.prefetch_queue([images,labelsOneHot])
-
-    def cloneFuc(batchQueue):
-        # Can be usesd for data parallelism
-        images,labels = batchQueue.dequeue()
-        logits,endPoints = network(images)
-
-        # Set loss function
-        if 'AuxLogits' in endPoints:
-            tf.losses.softmax_cross_entropy(logits=endPoints['AuxLogits'],
-                                            onehot_labels=labels, label_smoothing=0.0, weights=0.4,scope='auxLoss')
-        tf.losses.softmax_cross_entropy(logits=logits,
-                                        onehot_labels=labels, label_smoothing=0.0, weights=1.0)
-
-        return endPoints
-
-    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
-
-    clones = modelDeploy.create_clones(deployConfig,cloneFuc,[batchQueue])
-
-    fCloneScope = deployConfig.clone_scope(0)
-    updateOps = tf.get_collection(tf.GraphKeys.UPDATE_OPS,fCloneScope)
+    elif status is 'load':
+        if isTraining:
+            datalist = modelStalker.modelData[trainDir][0]
+        else:
+            datalist = modelStalker.modelData[trainDir][1]
 
 
 
-    endPoints = clones[0].outputs
-    for endPoint in endPoints:
-        x = endPoints[endPoint]
-        summaries.add(tf.summary.histogram('activations/'+ endPoint,x))
-        summaries.add(tf.summary.scalar('sparsity/' + endPoint, tf.nn.zero_fraction(x)))
 
-    #     # Add summaries for losses.
-    for loss in tf.get_collection(tf.GraphKeys.LOSSES, fCloneScope):
-        summaries.add(tf.summary.scalar('losses/%s' % loss.op.name,loss))
+    #
+    # trainDir = util.checkFolder('models')
+    # trainDir = util.checkFolder('withFlip',path = trainDir)
 
-    #     # Add summaries for variables.
-    for variable in slim.get_model_variables():
-        summaries.add(tf.summary.histogram(variable.op.name, variable))
+    with tf.Graph().as_default():
 
-    movingAverageVariable, variableAvg = None,None
+        #LOOK INTO MODEL CLASS****
+        # Use for parallelism, cant beat google
+        deployConfig = modelDeploy.DeploymentConfig(
+            num_clones=numClones,
+            clone_on_cpu=cloneCpu,
+            replica_id=tasks,
+            num_replicas=workerReplias,
+            num_ps_tasks=numPSTasks)
 
-
-    with tf.device(deployConfig.optimizer_device()):
-        learningRate = configLearningRate(sampleSize, globalStep )
-        optimizer = configOptimizer(learningRate, optim)
-        summaries.add(tf.summary.scalar('learningRate',learningRate))
-
-    varToTrain = tf.trainable_variables()
-    totalLoss, clonesGradients = modelDeploy.optimize_clones(clones,optimizer,var_list=varToTrain)
-
-    summaries.add(tf.summary.scalar('totalLoss',totalLoss))
-
-    predictions = tf.argmax(endPoints['Predictions'],1)
-
-    accuracy =  slim.metrics.accuracy( tf.to_int32(predictions), tf.to_int32(labels) )
-    # Create the summary ops such that they also print out to std output:
-    summaries.add(tf.summary.scalar('Accuracy', accuracy))
+        with tf.device(deployConfig.variables_device()):
+            globalStep = slim.create_global_step()
 
 
-    # mae_value_op, mae_update_op = slim.metrics.accuracy(predictions, labels)
-    # summaries.add(tf.summary.scalar('Prediction',mae_value_op))
 
-    gradUpdates = optimizer.apply_gradients(clonesGradients,global_step=globalStep)
+        #Load dataset from tracker class
 
-    updateOps.append(gradUpdates)
+        network = getNetFunc(networkName,numClasses=stalker.numLabels(),isTraining=isTraining)
+        fileQueue, counter = dataset.getFileQueue(datalist,[90,100])
 
-    updateOps = tf.group(*updateOps)
-    trainTensor = control_flow_ops.with_dependencies([updateOps],totalLoss,name='trainOp')
+        tmp = ''
+        sampleSize = 0
+        for l in counter:
+            value = counter[l]
+            sampleSize += value
+            tmp += ' Label %d , Value %d' % (l,value)
+        note.push('Dataset size : %s' %tmp)
 
-    summaries |= set(tf.get_collection(tf.GraphKeys.SUMMARIES,fCloneScope))
+        image,label,path = dataset.readFile(fileQueue)
 
-    summaryOp = tf.summary.merge(list(summaries),name='summaryOp')
-    note.push('Starting for %d steps' %steps)
+        height,width = netsList[networkName].defaultImageSize, netsList[networkName].defaultImageSize
+        image = tf.image.resize_images(image,[height,width],method=0)
+        # image = preprocess.preprocessImage(image,netsList[networkName].defaultImageSize,netsList[networkName].defaultImageSize,isTraining=True)
+
+        images,labels = tf.train.batch([image,label],batch_size=batchSize, num_threads=preprocessThread, capacity=2*batchSize)
+        labelsOneHot = slim.one_hot_encoding(labels, len(stalker.labels))
+        batchQueue = slim.prefetch_queue.prefetch_queue([images,labelsOneHot])
+
+        def cloneFuc(batchQueue):
+            # Can be usesd for data parallelism
+            images,labels = batchQueue.dequeue()
+            logits,endPoints = network(images)
+
+            # Set loss function
+            if 'AuxLogits' in endPoints:
+                tf.losses.softmax_cross_entropy(logits=endPoints['AuxLogits'],
+                                                onehot_labels=labels, label_smoothing=0.0, weights=0.4,scope='auxLoss')
+            tf.losses.softmax_cross_entropy(logits=logits,
+                                            onehot_labels=labels, label_smoothing=0.0, weights=1.0)
+
+            return endPoints
+
+        summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+
+        clones = modelDeploy.create_clones(deployConfig,cloneFuc,[batchQueue])
+
+        fCloneScope = deployConfig.clone_scope(0)
+        updateOps = tf.get_collection(tf.GraphKeys.UPDATE_OPS,fCloneScope)
 
 
-    slim.learning.train(trainTensor,logdir=trainDir,is_chief=True,init_fn=initFunc(),
-                        summary_op=summaryOp, number_of_steps=steps, log_every_n_steps=10,
-                        save_summaries_secs=600, save_interval_secs=600, sync_optimizer=None)
 
-    note.push('Finished training')
+        endPoints = clones[0].outputs
+        for endPoint in endPoints:
+            x = endPoints[endPoint]
+            summaries.add(tf.summary.histogram('activations/'+ endPoint,x))
+            summaries.add(tf.summary.scalar('sparsity/' + endPoint, tf.nn.zero_fraction(x)))
+
+        #     # Add summaries for losses.
+        for loss in tf.get_collection(tf.GraphKeys.LOSSES, fCloneScope):
+            summaries.add(tf.summary.scalar('losses/%s' % loss.op.name,loss))
+
+        #     # Add summaries for variables.
+        for variable in slim.get_model_variables():
+            summaries.add(tf.summary.histogram(variable.op.name, variable))
+
+        movingAverageVariable, variableAvg = None,None
+
+
+        with tf.device(deployConfig.optimizer_device()):
+            learningRate = configLearningRate(sampleSize, globalStep )
+            optimizer = configOptimizer(learningRate, optim)
+            summaries.add(tf.summary.scalar('learningRate',learningRate))
+
+        varToTrain = tf.trainable_variables()
+        totalLoss, clonesGradients = modelDeploy.optimize_clones(clones,optimizer,var_list=varToTrain)
+
+        summaries.add(tf.summary.scalar('totalLoss',totalLoss))
+
+        predictions = tf.argmax(endPoints['Predictions'],1)
+
+        accuracy =  slim.metrics.accuracy( tf.to_int32(predictions), tf.to_int32(labels) )
+        # Create the summary ops such that they also print out to std output:
+        summaries.add(tf.summary.scalar('Accuracy', accuracy))
+
+
+        # mae_value_op, mae_update_op = slim.metrics.accuracy(predictions, labels)
+        # summaries.add(tf.summary.scalar('Prediction',mae_value_op))
+
+        gradUpdates = optimizer.apply_gradients(clonesGradients,global_step=globalStep)
+
+        updateOps.append(gradUpdates)
+
+        updateOps = tf.group(*updateOps)
+        trainTensor = control_flow_ops.with_dependencies([updateOps],totalLoss,name='trainOp')
+
+        summaries |= set(tf.get_collection(tf.GraphKeys.SUMMARIES,fCloneScope))
+
+        summaryOp = tf.summary.merge(list(summaries),name='summaryOp')
+        note.push('Starting for %d steps' %steps)
+
+
+        slim.learning.train(trainTensor,logdir=trainDir,is_chief=True,init_fn=initFunc(),
+                            summary_op=summaryOp, number_of_steps=steps, log_every_n_steps=10,
+                            save_summaries_secs=600, save_interval_secs=600, sync_optimizer=None)
+
+        note.push('Finished training')
+
+
+runNN()

@@ -9,20 +9,6 @@ import threading
 import time
 import gc
 
-class serverThread (threading.Thread):
-    def __init__(self, name, func):
-        threading.Thread.__init__(self)
-        self.func = func
-        self.name = name
-
-    def run(self):
-        print ("Starting " + self.name)
-        # Get lock to synchronize threads
-        threadLock.acquire()
-        print_time(self.name, self.counter, 3)
-        # Free lock to release next thread
-        threadLock.release()
-
 
 class receivePush(threading.Thread):
     def __init__(self,server):
@@ -33,14 +19,17 @@ class receivePush(threading.Thread):
         server = self.server
         try:
             while not server.exitFlag:
-                push =  ast.literal_eval(server.ws.recv())
-                server.condition.acquire()
-                if push["type"] == 'tickle':
-                    if push["subtype"] == 'push':
-                        server.pushQueue.put(push)
-                # print('Putting %s on queue' % result)
-                server.condition.notify()
-                server.condition.release()
+                try:
+                    push =  ast.literal_eval(server.ws.recv())
+                    server.condition.acquire()
+                    if push["type"] == 'tickle':
+                        if push["subtype"] == 'push':
+                            server.pushQueue.put(push)
+                    # print('Putting %s on queue' % result)
+                    server.condition.notify()
+                    server.condition.release()
+                except ValueError:
+                    pass
         except KeyboardInterrupt:
             pass
 
@@ -73,39 +62,8 @@ class handlePush(threading.Thread):
             pass
 
 
-# def receivePush(server):
-#     try:
-#         while not server.exitFlag:
-#             result =  ast.literal_eval(server.ws.recv())
-#             server.condition.acquire()
-#             server.pushQueue.put(result)
-#             # print('Putting %s on queue' % result)
-#             server.condition.notify_all()
-#             server.condition.release()
-#     except KeyboardInterrupt:
-#         pass
-#
-# def handlePush(server):
-#     try:
-#         while not server.exitFlag:
-#             server.condition.acquire()
-#             if server.pushQueue.empty():
-#                 server.condition.wait()
-#
-#             if not server.pushQueue.empty():
-#                 push = server.pushQueue.get()
-#                 if push["type"] == 'tickle':
-#                     if push["subtype"] == 'push':
-#
-#                         server.notify.getPushes(server=server)
-#
-#             server.condition.release()
-#     except KeyboardInterrupt:
-#         pass
-
 class server(object):
     exitFlag = 0
-    # queueLock = threading.Lock()
     condition = threading.Condition()
     queueLock = threading.Lock()
     # nnLock = threading.Condition()
@@ -117,8 +75,6 @@ class server(object):
         self.notify = notify.getNotify(target,logging,commands)
         self.ws = create_connection(self.url)
 
-        # self.receiver = threading.Thread(target=receivePush, args=(self,))
-        # self.handler = threading.Thread(target=handlePush, args=(self,))
         self.receiver = receivePush(self)
         self.handlers =  [handlePush(self,1),handlePush(self,2)]
 
@@ -126,7 +82,6 @@ class server(object):
     def start(self):
         print('Stating messaging server')
         self.serverThread = threading.Thread(target=self.startThreads())
-
         self.serverThread.start()
 
     def startThreads(self):

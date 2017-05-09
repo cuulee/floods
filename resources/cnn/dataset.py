@@ -21,28 +21,11 @@ def readFile(fileQueue):
         raise
 
 
-def getFileQueue(isTraining,shuffle=True,ratio = None, eval = False):
-    images = stalker.toList()
-    if not eval:
-        allImages = stalker.getRotateList(images)
-        allImages = stalker.getFlippedList(allImages)
+def getFileQueue(datalist,ratio):
+    if type(ratio) is not list:
+        raise ValueError('Ratio must be a list to boost data set labels by')
 
-        if isTraining:
-            if not ratio:
-                ratio = 5
-            allImages,evalList = stalker.getTrainEvallist(allImages,ratio)
-            stalker.addTrain(allImages)
-            stalker.addEval(evalList)
-            stalker.saveTracker()
-    else:
-        if hasattr(stalker,'evalList'):
-            allImages = stalker.evalList()
-        else:
-            allImages = stalker.getRotateList(images)
-
-    if shuffle:
-        random.shuffle(allImages)
-    balancedList =stalker.getBalancedList(allImages,[100,100])
+    balancedList =stalker.getBalancedList(datalist,ratio)
     filePaths = [image[0] for image in balancedList]
     labels = [int(image[1]) for image in balancedList]
     counter = {0:0,1:0}
