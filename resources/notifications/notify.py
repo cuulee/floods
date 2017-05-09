@@ -7,6 +7,7 @@ from decimal import *
 import time
 import json
 import logging
+import threading
 
 class device(object):
     def __init__(self, deviceInfo, sesh, url=  'https://api.pushbullet.com/v2/' ):
@@ -91,7 +92,8 @@ class push(object):
             print('Error deleting push')
 
 class notify(object):
-    serverFunc = 'shutdown server'
+    serverFunc = 'shut'
+    threads = []
     try:
         defaultDevice = util.configSectionMap("Devices")['main']
     except:
@@ -103,6 +105,7 @@ class notify(object):
     minWindow = 40
 
     def __init__(self, APIKey, url= 'https://api.pushbullet.com/v2/', target = 'Main', logging = False, commands = None ):
+        self.commands = {'shut':self.shutdownServer}
         if target == 'Main':
             self.targetMain = True
 
@@ -115,13 +118,12 @@ class notify(object):
 
         if commands:
             if type(commands) is dict:
-                self.commands = commands
+                self.commands.update(commands)
+
 
             else:
                 print('Commands must be in name : func format')
-                self.commands = {}
-        else:
-            self.commands = {}
+
 
         self.url = url if url.endswith('/') else url + '/'
         self.sesh = requests.Session()
@@ -200,9 +202,15 @@ class notify(object):
     def runCommand(self,p,body, server):
         self.push('Ok running %s function' % body)
         if body == self.serverFunc:
+            if hasattr(self,'threads'):
+                for thread in self.threads:
+                    thread.join()
             self.commands[body](server)
         else:
-            self.commands[body]()
+            newThread = threading.Thread(target=self.commands[body])
+            newThread.start()
+            self.threads.append(newThread)
+            # self.commands[body]()
         p.read()
 
     def printing(self):

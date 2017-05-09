@@ -20,9 +20,15 @@ server = notifyServer.getServer()
 server.start()
 
 def wow():
-    print('ha')
+    import time
+    while True:
+        print('going for a sleep')
+        time.sleep(5)
 
-server.addCommands({'wow':wow})
+def lol():
+    print('still working')
+
+server.addCommands({'wow':wow, 'l':lol})
 # server.shutdown()
     # serverThread = threading.Thread(target=server.start())
     # serverThread.start()
