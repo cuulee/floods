@@ -49,9 +49,13 @@ import os
 
 def defaultNN():
     import cnn
-    cnn.runNN()
+    cnn.runNN(steps=20000,status='new',optim='rmsprop')
+
+def rerunNN():
+    import cnn
+    cnn.runNN(status='latest',optim='rmsprop')
 
 
 server = notifyServer.getServer()
 server.start()
-server.addCommands({'run nn':defaultNN})
+server.addCommands({'run nn':defaultNN, 'rerun nn': rerunNN})

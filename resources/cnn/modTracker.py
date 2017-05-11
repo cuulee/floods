@@ -19,7 +19,7 @@ class tracker(object):
         trackerName = 'modelTracker.pkl'
         trackerPath = util.checkFolder('trackers')
         self.path = os.path.join(trackerPath,trackerName)
-        self.types = {'new':self.new}
+        self.types = {'new':self.new,'latest':self.latest}
         if os.path.isfile(self.path):
             try:
                 with open(self.path, 'rb') as input:
@@ -35,7 +35,7 @@ class tracker(object):
             pickle.dump(self,output, pickle.HIGHEST_PROTOCOL)
 
 
-    def load(self,model,status,steps):
+    def load(self,model,steps,status):
         if status in self.types:
             return self.types[status](model,steps)
 
@@ -43,12 +43,27 @@ class tracker(object):
         if model not in self.models:
             raise ValueError('Model %s was not found in the model list ' % model)
 
-        latestM = len(self.models[model]) -1
-        modelPath, oldStep = self.models[model][latestM][0], self.models[model][latestM][1]
-        updateModel(model,modelPath,steps)
+        # latestM = len(self.models[model]) -1
+        modelPath = self.latestPath(model)
+        oldStep = self.models[model][modelPath][0]
+        self.updateModel(model,modelPath,steps)
         return modelPath, oldStep+steps
 
 
+    @staticmethod
+    def latestPath(model):
+        modelPath = util.checkFolder('models')
+        modelPath = util.checkFolder(model,path=modelPath)
+        latest = 0
+        folders = [f for f in os.listdir(modelPath) if os.path.isdir(os.path.join(modelPath, f))]
+        for folder in folders:
+            try:
+                num = int(folder)
+                latest = num
+            except:
+                pass
+
+        return  util.checkFolder(str(latest),path=modelPath)
 
 
     def new(self,model,steps):
@@ -72,22 +87,20 @@ class tracker(object):
         return modelPath, steps
         # modelPath = util.checkFolder(model,)
 
-    def addModel(self,model,modelPath):
+    def addModel(self,model,modelPath,steps):
         if model not in self.models:
-            self.models.update({model:[modelPath,steps]})
+            self.models.update({model:{modelPath:[steps]}})
         else:
             paths = self.models[model]
-            paths.append([modelPath,steps])
-            self.models.update({model:paths})
+            self.models[model].update({modelPath:[steps]})
+
     def updateModel(self,model,modelPath,newSteps):
-        tmp = []
-        for models in self.models[model]:
-            path = models[0]
-            steps = models[1]
-            if path == modelPath:
-                steps = models[1] + newSteps
-            tmp.append([path,steps])
-        self.model.update({model,tmp})
+
+
+
+        oldSteps = self.models[model][modelPath][0]
+        steps =  oldSteps + newSteps
+        self.models[model].update({modelPath:[steps]})
 
 
 

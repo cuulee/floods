@@ -79,7 +79,7 @@ def configOptimizer(learningRate, optim):
     if optim =='adam':
         optimizer = tf.train.AdamOptimizer(learningRate)
     elif optim =='rmsprop':
-        optimizer = tf.train.RMSPropOtimizer(learningRate)
+        optimizer = tf.train.RMSPropOptimizer(learningRate)
     else:
         raise ValueError('Optimizer %s was not found' % optim)
     return optimizer
@@ -90,8 +90,8 @@ def initFunc():
 
 def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.01, learningRateDecayFactor=0.94,
           batchSize=35, preprocessThread = 2, numClones = 1, cloneCpu = False,
-          tasks = 0, workerReplias = 1, numPSTasks = 0, oprim = 'adam',
-          steps = 1000, trainDir = '/tmp/tf/'):
+          tasks = 0, workerReplias = 1, numPSTasks = 0, optim = 'adam',
+          steps = 5000, trainDir = '/tmp/tf/'):
     # networkName = 'incept'
     # isTraining = True
     # learningRate = 0.01
@@ -108,23 +108,42 @@ def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.
 
     modelStalker = modTracker()
     stalker = tracker()
+
+    # m.pop()
+    #
+    #
+    # modelStalker.models.update({'incept':m})
     # modelStalker.reset()
+    #
+    # modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[20000]}})
     # modelStalker.saveTracker()
-    # return
-    trainDir = modelStalker.load(networkName,status = status)
+
+
+    trainDir,fullSteps = modelStalker.load(networkName,steps,status = status)
 
     if status is 'new':
         trainSet,evalSet = stalker.getData(isTraining=isTraining)
-        modelStalker.addData(trainDir,[trainSet,evalSet])
+        modelStalker.addData(trainDir,[trainSet,evalSet],update =True)
         datalist = trainSet
-        modelStalker.saveTracker()
 
-    elif status is 'load':
-        if isTraining:
-            datalist = modelStalker.modelData[trainDir][0]
-        else:
-            datalist = modelStalker.modelData[trainDir][1]
 
+    elif status is 'load' or status is 'latest':
+        try:
+            if isTraining:
+                datalist = modelStalker.modelData[trainDir][0]
+            else:
+                datalist = modelStalker.modelData[trainDir][1]
+        except KeyError:
+            trainSet,evalSet = stalker.getData(isTraining=isTraining)
+            modelStalker.addData(trainDir,[trainSet,evalSet],update =True)
+            if isTraining:
+                datalist = modelStalker.modelData[trainDir][0]
+            else:
+                datalist = modelStalker.modelData[trainDir][1]
+            modelStalker.saveTracker()
+
+    modelStalker.saveTracker()
+    print(optim)
 
 
 
@@ -245,10 +264,10 @@ def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.
 
 
         slim.learning.train(trainTensor,logdir=trainDir,is_chief=True,init_fn=initFunc(),
-                            summary_op=summaryOp, number_of_steps=steps, log_every_n_steps=10,
+                            summary_op=summaryOp, number_of_steps=fullSteps, log_every_n_steps=10,
                             save_summaries_secs=600, save_interval_secs=600, sync_optimizer=None)
 
         note.push('Finished training')
 
 
-runNN()
+# runNN(status='latest')
