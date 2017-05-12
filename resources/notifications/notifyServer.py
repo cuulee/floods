@@ -30,7 +30,7 @@ class receivePush(threading.Thread):
                     server.condition.release()
                 except ValueError:
                     pass
-        except KeyboardInterrupt:
+        except :
             pass
 
 
@@ -73,7 +73,7 @@ class server(object):
         self.url = url if url.endswith('/') else url + '/'
         self.url += APIKey
         self.notify = notify.getNotify(target,logging,commands)
-        self.ws = create_connection(self.url)
+        self.ws = create_connection(self.url,timeout=15)
 
         self.receiver = receivePush(self)
         self.handlers =  [handlePush(self,1),handlePush(self,2)]

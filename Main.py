@@ -46,6 +46,9 @@ import os
 #
 # note.push('Fin')
 # print('fin')
+def wow():
+    print('wow')
+
 
 def defaultNN():
     import cnn
@@ -55,7 +58,11 @@ def rerunNN():
     import cnn
     cnn.runNN(status='latest',optim='rmsprop')
 
+def fullrun():
+    import cnn
+    cnn.runNN(status='latest',optim='rmsprop',steps=20000)
+
 
 server = notifyServer.getServer()
 server.start()
-server.addCommands({'run nn':defaultNN, 'rerun nn': rerunNN})
+server.addCommands({'run nn':defaultNN, 'rerun nn': rerunNN,'full run nn':fullrun, 'wow':wow})
