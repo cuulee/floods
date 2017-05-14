@@ -19,7 +19,7 @@ class tracker(object):
         trackerName = 'modelTracker.pkl'
         trackerPath = util.checkFolder('trackers')
         self.path = os.path.join(trackerPath,trackerName)
-        self.types = {'new':self.new,'latest':self.latest}
+        self.types = {'new':self.new,'latest':self.latest,'select':self.select}
         if os.path.isfile(self.path):
             try:
                 with open(self.path, 'rb') as input:
@@ -35,9 +35,12 @@ class tracker(object):
             pickle.dump(self,output, pickle.HIGHEST_PROTOCOL)
 
 
-    def load(self,model,steps,status):
+    def load(self,model,steps,status,index = None):
         if status in self.types:
-            return self.types[status](model,steps)
+            if not index:
+                return self.types[status](model,steps)
+            elif index and status=='select':
+                return self.types[status](model,steps,index)
 
     def latest(self,model,steps):
         if model not in self.models:
@@ -50,6 +53,35 @@ class tracker(object):
         return modelPath, oldStep+steps
 
 
+    def select(self,model,steps,index):
+        if model not in self.models:
+            raise ValueError('Model %s was not found in the model list ' % model)
+
+
+        modelPath = util.checkFolder('models')
+        modelPath = util.checkFolder(model,path=modelPath)
+        folders = [f for f in os.listdir(modelPath) if os.path.isdir(os.path.join(modelPath, f))]
+        found = False
+        for folder in folders:
+            try:
+                num = folder
+                print(num,index)
+                if str(num) == str(index):
+                    found = True
+                    break
+            except:
+                pass
+        if found:
+            modelPath= os.path.join(modelPath,str(index))
+            oldStep = self.models[model][modelPath][0]
+            self.updateModel(model,modelPath,steps)
+            return modelPath, oldStep+steps
+        else:
+            raise ValueError('%s model index: %d was not found in %s directory' %(model,index, modelPath))
+
+
+
+    #Returns the most recent model path
     @staticmethod
     def latestPath(model):
         modelPath = util.checkFolder('models')

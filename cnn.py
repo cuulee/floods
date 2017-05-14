@@ -88,7 +88,10 @@ def initFunc():
     return None
 
 
-def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.01, learningRateDecayFactor=0.94,
+def evalNN(networkName='incept',status='latest'):
+    pass
+
+def runNN(networkName='incept',isTraining=True, status = 'new', index = None, learningRate =0.01, learningRateDecayFactor=0.94,
           batchSize=35, preprocessThread = 2, numClones = 1, cloneCpu = False,
           tasks = 0, workerReplias = 1, numPSTasks = 0, optim = 'adam',
           steps = 5000, trainDir = '/tmp/tf/'):
@@ -108,18 +111,20 @@ def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.
 
     modelStalker = modTracker()
     stalker = tracker()
-
+    # modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[35000],'/media/karl/My Files/Project/Resources/models/incept/2': 55250}})
+    # modelStalker.saveTracker()
+    # print(modelStalker.models['incept'] )
+    # return
     # m.pop()
     #
     #
     # modelStalker.models.update({'incept':m})
     # modelStalker.reset()
     #
-    # modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[20000]}})
-    # modelStalker.saveTracker()
 
 
-    trainDir,fullSteps = modelStalker.load(networkName,steps,status = status)
+
+    trainDir,fullSteps = modelStalker.load(networkName,steps,status = status, index = index)
 
     if status is 'new':
         trainSet,evalSet = stalker.getData(isTraining=isTraining)
@@ -127,7 +132,7 @@ def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.
         datalist = trainSet
 
 
-    elif status is 'load' or status is 'latest':
+    elif status is 'load' or status is 'latest' or status is 'select':
         try:
             if isTraining:
                 datalist = modelStalker.modelData[trainDir][0]
@@ -143,7 +148,6 @@ def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.
             modelStalker.saveTracker()
 
     modelStalker.saveTracker()
-    print(optim)
 
 
 
@@ -178,6 +182,9 @@ def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.
             value = counter[l]
             sampleSize += value
             tmp += ' Label %d , Value %d' % (l,value)
+
+        modelName = networkName + ': ' + os.path.dirname(trainDir)
+        note.push('Running %s' % modelName)
         note.push('Dataset size : %s' %tmp)
 
         image,label,path = dataset.readFile(fileQueue)
@@ -269,5 +276,5 @@ def runNN(networkName='incept',isTraining=True, status = 'new', learningRate =0.
 
         note.push('Finished training')
 
-
+# runNN(steps=2500, status='select',index = 1)
 # runNN(status='latest')

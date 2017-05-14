@@ -54,6 +54,10 @@ def defaultNN():
     import cnn
     cnn.runNN(steps=20000,status='new',optim='rmsprop')
 
+def rerunnFirst():
+    import cnn
+    cnn.runNN(steps=2500, status='select',index = 1)
+
 def rerunNN():
     import cnn
     cnn.runNN(status='latest',optim='rmsprop')
@@ -63,6 +67,6 @@ def fullrun():
     cnn.runNN(status='latest',optim='rmsprop',steps=20000)
 
 
-server = notifyServer.getServer()
+server = notifyServer.getServer(commands={'run nn':defaultNN, 'rerun nn': rerunNN,'full run nn':fullrun, 'wow':wow, 'rerun 1 nn': rerunnFirst})
 server.start()
-server.addCommands({'run nn':defaultNN, 'rerun nn': rerunNN,'full run nn':fullrun, 'wow':wow})
+# server.addCommands({'run nn':defaultNN, 'rerun nn': rerunNN,'full run nn':fullrun, 'wow':wow})

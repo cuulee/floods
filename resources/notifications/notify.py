@@ -201,6 +201,7 @@ class notify(object):
 
     def runCommand(self,p,body, server):
         self.push('Ok running %s function' % body)
+        p.read()
         if body == self.serverFunc:
             if hasattr(self,'threads'):
                 for thread in self.threads:
@@ -211,7 +212,7 @@ class notify(object):
             newThread.start()
             self.threads.append(newThread)
             # self.commands[body]()
-        p.read()
+
 
     def printing(self):
         self.push('OK Printing', title = 'Command')
