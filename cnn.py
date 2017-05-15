@@ -13,6 +13,7 @@ import os,sys
 import tensorflow as tf
 import numpy as np
 import psutil
+import math
 from PIL import Image
 slim = tf.contrib.slim
 
@@ -88,30 +89,93 @@ def initFunc():
     return None
 
 
-def evalNN(networkName='incept',status='latest'):
-    pass
+def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numBatch=None):
+    modelStalker = modTracker()
+    stalker = tracker()
+    trainDir,fullSteps = modelStalker.load(networkName,status = status, index = index)
+
+    datalist = modelStalker.modelData[trainDir][1]
+
+    with tf.Graph().as_default():
+
+        #LOOK INTO MODEL CLASS****
+        # Use for parallelism, cant beat google
+        deployConfig = modelDeploy.DeploymentConfig(
+            num_clones=numClones,
+            clone_on_cpu=cloneCpu,
+            replica_id=tasks,
+            num_replicas=workerReplias,
+            num_ps_tasks=numPSTasks)
+
+        with tf.device(deployConfig.variables_device()):
+            globalStep = slim.create_global_step()
+
+
+        network = getNetFunc(networkName,numClasses=stalker.numLabels(),isTraining=False)
+        fileQueue, counter = dataset.getFileQueue(datalist,[100,90])
+
+        tmp = ''
+        sampleSize = 0
+        for l in counter:
+            value = counter[l]
+            sampleSize += value
+            tmp += ' Label %d , Value %d' % (l,value)
+
+        modelName = networkName + ': ' + os.path.basename(trainDir)
+        checkpoint = tf.train.latest_checkpoint(trainDir)
+        note.push('Running %s' % modelName)
+        note.push('Dataset size : %s' %tmp)
+
+        image,label,path = dataset.readFile(fileQueue)
+
+        height,width = netsList[networkName].defaultImageSize, netsList[networkName].defaultImageSize
+        image = tf.image.resize_images(image,[height,width],method=0)
+        # image = preprocess.preprocessImage(image,netsList[networkName].defaultImageSize,netsList[networkName].defaultImageSize,isTraining=True)
+
+        images,labels = tf.train.batch([image,label],batch_size=batchSize, num_threads=preprocessThread, capacity=2*batchSize)
+
+        logits,_ = network(images)
+
+        restoreVars = slim.get_variables_to_restore()
+        prediction = tf.argmax(logits,1)
+
+        names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
+        'Accuracy': slim.metrics.streaming_accuracy(prediction, labels),
+        'Recall_5': slim.metrics.streaming_recall_at_k(logits, labels, 5),
+                })
+
+        for name, value in names_to_values.items():
+            summary_name = 'eval/%s' % name
+            op = tf.summary.scalar(summary_name, value, collections=[])
+            op = tf.Print(op, [value], summary_name)
+            tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
+
+        if not numBatch:
+            numBatch = math.ceil(len(datalist) / float(batchSize))
+        evalDir = util.checkFolder('eval',path=trainDir)
+
+        note.push('Starting for %d evals' %numBatch)
+        slim.evaluation.evaluate_once(master='',
+                                      checkpoint_path=checkpoint,
+                                      logdir=evalDir,
+                                      num_evals=numBatch,
+                                      eval_op=list(names_to_updates.values()),
+                                      variables_to_restore=restoreVars)
+
+
+
+        note.push('Finished eval')
+
 
 def runNN(networkName='incept',isTraining=True, status = 'new', index = None, learningRate =0.01, learningRateDecayFactor=0.94,
           batchSize=35, preprocessThread = 2, numClones = 1, cloneCpu = False,
           tasks = 0, workerReplias = 1, numPSTasks = 0, optim = 'adam',
           steps = 5000, trainDir = '/tmp/tf/'):
-    # networkName = 'incept'
-    # isTraining = True
-    # learningRate = 0.01
-    # learningRateDecayFactor = 0.94
-    # batchSize = 30
-    # preprocessThread = 2
-    # numClones =1
-    # cloneCpu = False
-    # tasks = 0
-    # workerReplias = 1
-    # numPSTasks = 0
-    # optim = 'adam'
-    # steps = 20000
+
 
     modelStalker = modTracker()
     stalker = tracker()
-    # modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[35000],'/media/karl/My Files/Project/Resources/models/incept/2': 55250}})
+    # modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[33180],'/media/karl/My Files/Project/Resources/models/incept/2': [55250]}})
     # modelStalker.saveTracker()
     # print(modelStalker.models['incept'] )
     # return
@@ -122,9 +186,7 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
     # modelStalker.reset()
     #
 
-
-
-    trainDir,fullSteps = modelStalker.load(networkName,steps,status = status, index = index)
+    trainDir,fullSteps = modelStalker.load(networkName,status = status, steps=steps,index = index)
 
     if status is 'new':
         trainSet,evalSet = stalker.getData(isTraining=isTraining)
@@ -149,11 +211,6 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
 
     modelStalker.saveTracker()
 
-
-
-    #
-    # trainDir = util.checkFolder('models')
-    # trainDir = util.checkFolder('withFlip',path = trainDir)
 
     with tf.Graph().as_default():
 
@@ -183,7 +240,8 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
             sampleSize += value
             tmp += ' Label %d , Value %d' % (l,value)
 
-        modelName = networkName + ': ' + os.path.dirname(trainDir)
+        modelName = networkName + ': ' + os.path.basename(trainDir)
+
         note.push('Running %s' % modelName)
         note.push('Dataset size : %s' %tmp)
 
@@ -275,6 +333,9 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
                             save_summaries_secs=600, save_interval_secs=600, sync_optimizer=None)
 
         note.push('Finished training')
+
+# evalNN()
+# evalNN(status='select',index = 1)
 
 # runNN(steps=2500, status='select',index = 1)
 # runNN(status='latest')

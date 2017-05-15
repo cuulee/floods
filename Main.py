@@ -60,13 +60,28 @@ def rerunnFirst():
 
 def rerunNN():
     import cnn
-    cnn.runNN(status='latest',optim='rmsprop')
+    cnn.runNN(status='latest',optim='rmsprop',steps =7000)
 
 def fullrun():
     import cnn
-    cnn.runNN(status='latest',optim='rmsprop',steps=20000)
+    cnn.runNN(status='latest',optim='rmsprop',steps=10)
 
+def evalLatest():
+    import cnn
+    cnn.evalNN(numBatch=1000)
 
-server = notifyServer.getServer(commands={'run nn':defaultNN, 'rerun nn': rerunNN,'full run nn':fullrun, 'wow':wow, 'rerun 1 nn': rerunnFirst})
+def evalFirst():
+    import cnn
+    cnn.evalNN(status='select',index = 1)
+
+commands ={'run nn':defaultNN,
+            'rerun nn': rerunNN,
+            'full run nn':fullrun,
+            'wow':wow,
+            'rerun 1 nn': rerunnFirst,
+            'eval latest': evalLatest,
+            'eval first': evalFirst}
+
+server = notifyServer.getServer(commands = commands)
 server.start()
 # server.addCommands({'run nn':defaultNN, 'rerun nn': rerunNN,'full run nn':fullrun, 'wow':wow})

@@ -34,8 +34,7 @@ class tracker(object):
         with open(self.path, 'wb') as output:
             pickle.dump(self,output, pickle.HIGHEST_PROTOCOL)
 
-
-    def load(self,model,steps,status,index = None):
+    def load(self,model,status,steps=None,index = None):
         if status in self.types:
             if not index:
                 return self.types[status](model,steps)
@@ -49,9 +48,12 @@ class tracker(object):
         # latestM = len(self.models[model]) -1
         modelPath = self.latestPath(model)
         oldStep = self.models[model][modelPath][0]
-        self.updateModel(model,modelPath,steps)
-        return modelPath, oldStep+steps
 
+        if steps:
+            self.updateModel(model,modelPath,steps)
+        else:
+            steps = 0
+        return modelPath, oldStep+steps
 
     def select(self,model,steps,index):
         if model not in self.models:
@@ -65,7 +67,6 @@ class tracker(object):
         for folder in folders:
             try:
                 num = folder
-                print(num,index)
                 if str(num) == str(index):
                     found = True
                     break
@@ -74,12 +75,13 @@ class tracker(object):
         if found:
             modelPath= os.path.join(modelPath,str(index))
             oldStep = self.models[model][modelPath][0]
-            self.updateModel(model,modelPath,steps)
+            if steps:
+                self.updateModel(model,modelPath,steps)
+            else:
+                steps = 0
             return modelPath, oldStep+steps
         else:
             raise ValueError('%s model index: %d was not found in %s directory' %(model,index, modelPath))
-
-
 
     #Returns the most recent model path
     @staticmethod
@@ -96,7 +98,6 @@ class tracker(object):
                 pass
 
         return  util.checkFolder(str(latest),path=modelPath)
-
 
     def new(self,model,steps):
         if model not in nets.netModel:
@@ -133,8 +134,6 @@ class tracker(object):
         oldSteps = self.models[model][modelPath][0]
         steps =  oldSteps + newSteps
         self.models[model].update({modelPath:[steps]})
-
-
 
     def reset(self):
         self.models = {}

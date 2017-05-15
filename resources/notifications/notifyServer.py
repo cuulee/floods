@@ -20,7 +20,6 @@ class receivePush(threading.Thread):
         try:
             while not server.exitFlag:
                 try:
-                    server.ws.settimeout(15)
                     push =  ast.literal_eval(server.ws.recv())
                     server.condition.acquire()
                     if push["type"] == 'tickle':
@@ -29,9 +28,9 @@ class receivePush(threading.Thread):
                             # print('Putting %s on queue' % push)
                     server.condition.notify()
                     server.condition.release()
-                except ValueError:
+                except :
                     pass
-        except KeyboardInterrupt:
+        except KeyboardInterrupt :
             pass
 
 
