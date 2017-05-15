@@ -16,33 +16,18 @@ def serverThreadFunc(server,condition):
 
 
 
-server = notifyServer.getServer()
+
+def w():
+    print('ha')
+
+def lol(**kwargs):
+    if not kwargs['a']:
+        print('still working')
+    else:
+        print('Suck it %s' % kwargs['a'])
+
+commands ={'lol':lol, 'w':w}
+
+
+server = notifyServer.getServer(commands = commands)
 server.start()
-
-def wow():
-    import time
-    while True:
-        print('going for a sleep')
-        time.sleep(5)
-
-def lol():
-    print('still working')
-
-server.addCommands({'wow':wow, 'l':lol})
-# server.shutdown()
-    # serverThread = threading.Thread(target=server.start())
-    # serverThread.start()
-# server.shutdown()
-#
-#     while True:
-#         pass
-#     server.shutdown()
-# except KeyError:
-#     server.shutdown()
-
-
-
-
-# server = notifyServer.getServer(commands={'wow':wow})
-# note = notify.getNotify()
-# note.push('Yo')

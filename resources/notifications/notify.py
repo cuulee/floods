@@ -8,6 +8,7 @@ import time
 import json
 import logging
 import threading
+import inspect
 
 class device(object):
     def __init__(self, deviceInfo, sesh, url=  'https://api.pushbullet.com/v2/' ):
@@ -190,8 +191,10 @@ class notify(object):
         for p in pushes:
             if hasattr(p, 'body'):
                 body = p.body.lower().strip()
+                body = body.split('{')
+                body[0] = body[0].strip()
                 if hasattr(self,'commands') and self.commands:
-                    if body in self.commands and p.dismissed == False:
+                    if body[0] in self.commands and p.dismissed == False:
                         self.runCommand(p,body,server)
         return serverQuit
 
@@ -199,8 +202,23 @@ class notify(object):
     def shutdownServer(server):
         server.exitFlag=1
 
+
+    def parseBody(self,body):
+        try:
+            allArgs = body[1].split('}')[0].split(',')
+            args = {}
+            for arg in allArgs:
+                arg = arg.strip()
+                key,value = arg.split('=')
+                args.update({key:value})
+
+            return body[0].strip(), args
+        except:
+            return body[0], None
+
     def runCommand(self,p,body, server):
-        self.push('Ok running %s function' % body)
+        self.push('Ok running %s function' % body[0])
+        body, args = self.parseBody(body)
         p.read()
         if body == self.serverFunc:
             if hasattr(self,'threads'):
@@ -208,7 +226,11 @@ class notify(object):
                     thread.join()
             self.commands[body](server)
         else:
-            newThread = threading.Thread(target=self.commands[body])
+            acceptedArgs = inspect.getargspec(self.commands[body])
+            if 'kwargs' in acceptedArgs:
+                newThread = threading.Thread(target=self.commands[body],kwargs=args)
+            else:
+                newThread = threading.Thread(target=self.commands[body])
             newThread.start()
             self.threads.append(newThread)
             # self.commands[body]()
