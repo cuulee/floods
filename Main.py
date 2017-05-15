@@ -70,17 +70,86 @@ def evalLatest():
     import cnn
     cnn.evalNN(numBatch=1000)
 
-def evalFirst():
+def evalNN(**kwargs):
+    from resources.notifications.notify import notify
     import cnn
-    cnn.evalNN(status='select',index = 1)
+    note = notify.getNotify()
 
-commands ={'run nn':defaultNN,
-            'rerun nn': rerunNN,
-            'full run nn':fullrun,
+    if 'eval' in kwargs:
+        try:
+            evals = int(kwargs['eval'])
+        except:
+            note.push('Invalid number of eval')
+    else:
+        evals = 5
+
+    if 'stat' in kwargs:
+        status = kwargs['stat']
+    else:
+        status ='latest'
+    if status == 'select':
+        try:
+            index = int(kwargs['index'])
+        except:
+            note.push('Invalid Index')
+            return
+    else:
+        index = None
+
+
+    cnn.evalNN(status=status,index = index,numEvals= evals)
+
+def trainNN(**kwargs):
+    import cnn
+    from resources.notifications.notify import notify
+
+    note = notify.getNotify()
+    if 'steps' in kwargs:
+        try:
+            steps = int(kwargs['steps'])
+        except:
+            note.push('Invalid step')
+            return
+    else:
+        steps = 10
+    if 'stat' in kwargs:
+        status = kwargs['stat']
+    else:
+        status ='latest'
+    if status == 'select':
+        try:
+            index = kwargs['index']
+        except:
+            note.push('Invalid i/Index')
+            return
+    else:
+        index = None
+    if 'model' in kwargs:
+        networkName = kwargs['model']
+    else:
+        networkName = 'incept'
+
+    if 'optim' in kwargs:
+        optim = kwargs['optim']
+    else:
+        optim = 'adam'
+
+    cnn.runNN(networkName=networkName, status=status,index=index,steps=steps,optim=optim)
+
+
+
+commands ={'train nn':trainNN,
             'wow':wow,
-            'rerun 1 nn': rerunnFirst,
-            'eval latest': evalLatest,
-            'eval first': evalFirst}
+            'eval nn':evalNN
+            }
+#
+# commands ={'run nn':defaultNN,
+#             'rerun nn':rerunNN,
+#             'full run nn':fullrun,
+#             'wow':wow,
+#             'rerun 1 nn': rerunnFirst,
+#             'eval latest': evalLatest,
+#             'eval first': evalFirst}
 
 server = notifyServer.getServer(commands = commands)
 server.start()

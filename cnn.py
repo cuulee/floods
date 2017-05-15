@@ -89,7 +89,7 @@ def initFunc():
     return None
 
 
-def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numBatch=None):
+def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEvals=None):
     modelStalker = modTracker()
     stalker = tracker()
     trainDir,fullSteps = modelStalker.load(networkName,status = status, index = index)
@@ -150,15 +150,15 @@ def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numBat
             op = tf.Print(op, [value], summary_name)
             tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
 
-        if not numBatch:
-            numBatch = math.ceil(len(datalist) / float(batchSize))
+        if not numEvals:
+            numEvals = math.ceil(len(datalist) / float(batchSize))
         evalDir = util.checkFolder('eval',path=trainDir)
 
-        note.push('Starting for %d evals' %numBatch)
+        note.push('Starting for %d evals' %numEvals)
         slim.evaluation.evaluate_once(master='',
                                       checkpoint_path=checkpoint,
                                       logdir=evalDir,
-                                      num_evals=numBatch,
+                                      num_evals=numEvals,
                                       eval_op=list(names_to_updates.values()),
                                       variables_to_restore=restoreVars)
 
@@ -172,7 +172,6 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
           tasks = 0, workerReplias = 1, numPSTasks = 0, optim = 'adam',
           steps = 5000, trainDir = '/tmp/tf/'):
 
-
     modelStalker = modTracker()
     stalker = tracker()
     # modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[33180],'/media/karl/My Files/Project/Resources/models/incept/2': [55250]}})
@@ -185,18 +184,17 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
     # modelStalker.models.update({'incept':m})
     # modelStalker.reset()
     #
-
     trainDir,fullSteps = modelStalker.load(networkName,status = status, steps=steps,index = index)
 
-    if status is 'new':
+    if status == 'new':
         trainSet,evalSet = stalker.getData(isTraining=isTraining)
         modelStalker.addData(trainDir,[trainSet,evalSet],update =True)
         datalist = trainSet
 
-
-    elif status is 'load' or status is 'latest' or status is 'select':
+    elif status == 'load' or status == 'latest' or status == 'select':
         try:
             if isTraining:
+
                 datalist = modelStalker.modelData[trainDir][0]
             else:
                 datalist = modelStalker.modelData[trainDir][1]
@@ -326,8 +324,6 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
 
         summaryOp = tf.summary.merge(list(summaries),name='summaryOp')
         note.push('Starting for %d steps' %steps)
-
-
         slim.learning.train(trainTensor,logdir=trainDir,is_chief=True,init_fn=initFunc(),
                             summary_op=summaryOp, number_of_steps=fullSteps, log_every_n_steps=10,
                             save_summaries_secs=600, save_interval_secs=600, sync_optimizer=None)

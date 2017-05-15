@@ -208,8 +208,8 @@ class notify(object):
             allArgs = body[1].split('}')[0].split(',')
             args = {}
             for arg in allArgs:
-                arg = arg.strip()
                 key,value = arg.split('=')
+                key,value = key.strip(),value.strip()
                 args.update({key:value})
 
             return body[0].strip(), args
