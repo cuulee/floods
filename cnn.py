@@ -170,7 +170,7 @@ def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEva
 def runNN(networkName='incept',isTraining=True, status = 'new', index = None, learningRate =0.01, learningRateDecayFactor=0.94,
           batchSize=35, preprocessThread = 2, numClones = 1, cloneCpu = False,
           tasks = 0, workerReplias = 1, numPSTasks = 0, optim = 'adam',
-          steps = 5000, trainDir = '/tmp/tf/'):
+          steps = 5000, trainDir = '/tmp/tf/',reuse= False):
 
     modelStalker = modTracker()
     stalker = tracker()
@@ -185,10 +185,16 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
     # modelStalker.reset()
     #
     trainDir,fullSteps = modelStalker.load(networkName,status = status, steps=steps,index = index)
+    if reuse:
+        optim = modelStalker.get(networkName,trainDir,'optim')
+        batchSize = modelStalker.get(networkName,trainDir,'batchSize')
+    print(batchSize)
+
 
     if status == 'new':
         trainSet,evalSet = stalker.getData(isTraining=isTraining)
         modelStalker.addData(trainDir,[trainSet,evalSet],update =True)
+        
         datalist = trainSet
 
     elif status == 'load' or status == 'latest' or status == 'select':
@@ -207,7 +213,7 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
                 datalist = modelStalker.modelData[trainDir][1]
             modelStalker.saveTracker()
 
-    modelStalker.saveTracker()
+
 
 
     with tf.Graph().as_default():
@@ -323,12 +329,34 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
         summaries |= set(tf.get_collection(tf.GraphKeys.SUMMARIES,fCloneScope))
 
         summaryOp = tf.summary.merge(list(summaries),name='summaryOp')
-        note.push('Starting for %d steps' %steps)
+        note.push('Training for %d steps' %steps)
+        modelStalker.saveTracker()
         slim.learning.train(trainTensor,logdir=trainDir,is_chief=True,init_fn=initFunc(),
                             summary_op=summaryOp, number_of_steps=fullSteps, log_every_n_steps=10,
                             save_summaries_secs=600, save_interval_secs=600, sync_optimizer=None)
 
+
         note.push('Finished training')
+
+# modelStalker = modTracker()
+# del modelStalker.models['incept']['/media/karl/My Files/Project/Resources/models/incept/3']
+# modelStalker.saveTracker()
+# print(modelStalker.models)
+
+# modelStalker.models['incept'].update({'/media/karl/My Files/Project/Resources/models/incept/1': {'optim':'adam','batchSize':30},
+#                                     '/media/karl/My Files/Project/Resources/models/incept/2': {'optim':'rmsprop','batchSize':35}} )
+
+# print(modelStalker.get('incept','/media/karl/My Files/Project/Resources/models/incept/1','optim'))
+# modelStalker.updateAtt('incept','/media/karl/My Files/Project/Resources/models/incept/1','optim','hi')
+# print(modelStalker.models)
+# modelStalker.saveTracker()
+# print(modelStalker.models)
+# print(modelStalker.getSteps('incept'))
+# stalker = tracker()
+# modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[33180],'/media/karl/My Files/Project/Resources/models/incept/2': [55250]}})
+# modelStalker.saveTracker()
+# print(modelStalker.models['incept'] )
+
 
 # evalNN()
 # evalNN(status='select',index = 1)

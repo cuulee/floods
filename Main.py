@@ -83,8 +83,8 @@ def evalNN(**kwargs):
     else:
         evals = 5
 
-    if 'stat' in kwargs:
-        status = kwargs['stat']
+    if 'status' in kwargs:
+        status = kwargs['status']
     else:
         status ='latest'
     if status == 'select':
@@ -112,8 +112,8 @@ def trainNN(**kwargs):
             return
     else:
         steps = 10
-    if 'stat' in kwargs:
-        status = kwargs['stat']
+    if 'status' in kwargs:
+        status = kwargs['status']
     else:
         status ='latest'
     if status == 'select':
@@ -134,7 +134,17 @@ def trainNN(**kwargs):
     else:
         optim = 'adam'
 
-    cnn.runNN(networkName=networkName, status=status,index=index,steps=steps,optim=optim)
+    if 'batch' in kwargs:
+        batchSize = int(kwargs['batch'])
+    else:
+        batchSize =35
+
+    if 'reuse' in kwargs:
+        reuse = True
+    else:
+        reuse = False
+
+    cnn.runNN(networkName=networkName, status=status,index=index,steps=steps,optim=optim,reuse = reuse,batchSize=batchSize)
 
 
 

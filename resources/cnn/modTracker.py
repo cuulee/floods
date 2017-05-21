@@ -47,13 +47,23 @@ class tracker(object):
 
         # latestM = len(self.models[model]) -1
         modelPath = self.latestPath(model)
-        oldStep = self.models[model][modelPath][0]
+        oldStep = self.get(model,modelPath,'steps')
 
-        if steps:
-            self.updateModel(model,modelPath,steps)
-        else:
+        if not steps:
             steps = 0
         return modelPath, oldStep+steps
+
+    def get(self,model,path,att):
+        if att == 'steps':
+            return self.getSteps(path)
+        elif att in self.models[model][path]:
+            return self.models[model][path][att]
+        else:
+            raise ValueError('%s was not found in model %s: %s' %(att,model,path))
+
+    def updateAtt(self,model,path,att,value):
+        self.models[model][path].update({att:value})
+
 
     def select(self,model,steps,index):
         if model not in self.models:
@@ -74,11 +84,10 @@ class tracker(object):
                 pass
         if found:
             modelPath= os.path.join(modelPath,str(index))
-            oldStep = self.models[model][modelPath][0]
-            if steps:
-                self.updateModel(model,modelPath,steps)
-            else:
+            oldStep = self.get(model,modelPath,'steps')
+            if not steps:
                 steps = 0
+
             return modelPath, oldStep+steps
         else:
             raise ValueError('%s model index: %d was not found in %s directory' %(model,index, modelPath))
@@ -127,13 +136,7 @@ class tracker(object):
             paths = self.models[model]
             self.models[model].update({modelPath:[steps]})
 
-    def updateModel(self,model,modelPath,newSteps):
 
-
-
-        oldSteps = self.models[model][modelPath][0]
-        steps =  oldSteps + newSteps
-        self.models[model].update({modelPath:[steps]})
 
     def reset(self):
         self.models = {}
@@ -149,3 +152,18 @@ class tracker(object):
                 print('model data must be in list format')
         elif modelPath not in self.modelData:
             self.modelData.update({modelPath:dataset})
+
+    def getSteps(self,modelPath):
+
+        files = [f for f in os.listdir(modelPath) if os.path.isfile(os.path.join(modelPath, f))]
+        maxSteps = 0
+        for f in files:
+            try:
+                f = f.split('-')[1].split('.')[0]
+                step = int(f)
+                if step > maxSteps:
+                    maxSteps = step
+
+            except:
+                pass
+        return maxSteps
