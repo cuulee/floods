@@ -80,7 +80,7 @@ class server(object):
 
     #Starts the server in a new thread, this allows it to run in the background
     def start(self):
-        print('Stating messaging server')
+        print('Starting messaging server')
         self.serverThread = threading.Thread(target=self.startThreads())
         self.serverThread.start()
 

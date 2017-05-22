@@ -3,12 +3,9 @@ import shutil
 import configparser
 from math import radians, cos, sin, asin, sqrt
 
-# sys.path.insert(0,'/home/karl/Documents/floods/')
-
 
 Config = configparser.ConfigParser()
 Config.read("./Settings.ini")
-
 
 
 #Checks if folder exists and creates one if not found

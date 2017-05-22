@@ -49,7 +49,7 @@ class API(object):
             localeName = str(locale.lower()) + '.geojson'
             inputLocale = util.checkFolder('Locale', Input=True)
             inputLocale = os.path.join(inputLocale,localeName)
-            api = API('gillesk3','rockyou94',notify=notify)
+            api = API('gillesk3','floodsystem',notify=notify)
 
             year = startYear
             endYear = datetime.now().year

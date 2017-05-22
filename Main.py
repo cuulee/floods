@@ -9,7 +9,7 @@ from datetime import datetime
 import os, sys
 
 
-
+#Handles eval function from user
 def evalNN(**kwargs):
     from resources.notifications.notify import notify
     import cnn
@@ -39,6 +39,7 @@ def evalNN(**kwargs):
 
     cnn.evalNN(status=status,index = index,numEvals= evals)
 
+#Handles train function from user
 def trainNN(**kwargs):
     import cnn
     from resources.notifications.notify import notify
@@ -86,6 +87,7 @@ def trainNN(**kwargs):
 
     cnn.runNN(networkName=networkName, status=status,index=index,steps=steps,optim=optim,reuse = reuse,batchSize=batchSize)
 
+#Handles downloads from user
 def downloadImage(**kwargs):
     from resources.resource import API
     from resources.notifications.notify import notify
@@ -129,6 +131,7 @@ def downloadImage(**kwargs):
     API.getImages(locale,year,month,day)
 
 
+#Lables images and returns a dict of images,lable
 def labelImages(images): #Takes in
     try:
         for basename in images:
@@ -159,6 +162,7 @@ def labelImages(images): #Takes in
 
         sys.exit()
 
+#Used to parse folder, find images , label and store in dataset
 def organise(locale):
     directory = util.checkFolder('JPEGS',Input=True)
 
@@ -171,7 +175,7 @@ def organise(locale):
     stalker.add(imageData)
     stalker.saveTracker()
 
-
+#Converts image to jpeg
 def toJpeg(locale,inputPath =None,outputPath=None, fusion = False):
     directory = util.checkFolder('Proccessed', Output=True)
 
@@ -193,14 +197,13 @@ def toJpeg(locale,inputPath =None,outputPath=None, fusion = False):
     satImage(tiffImages[0]).convertTo('jpeg',outputPath=outputPath)
 
 
-
 commands ={'train nn':trainNN,
             'eval nn':evalNN,
             'download': downloadImage
             }
 
 server = notifyServer.getServer(commands = commands)
-# server.start()
+
 
 args = sys.argv[1:]
 for i, arg in enumerate(args):
@@ -252,7 +255,7 @@ for i, arg in enumerate(args):
             import cnn
             cnn.evalNN(status=status,index = index,numEvals= evals)
         except:
-            print('-eval requires mode, status/index, number of eval')
+            print('-eval requires model, status/index, number of eval')
 
     elif arg =='-download':
         from resources.resource import API
@@ -273,3 +276,6 @@ for i, arg in enumerate(args):
     elif arg =='-convert':
         locale = args[i+1]
         toJpeg(locale)
+
+    elif arg =='-kill':
+        satImage.killDisplay()

@@ -19,7 +19,7 @@ slim = tf.contrib.slim
 
 netsList = {'incept':nets.inceptResV2}
 scopeList ={'incept':nets.inceptResV2ArgScope}
-
+note = notify.getNotify()
 
 
 #Returns network function for a model
@@ -51,7 +51,7 @@ def displayImageTensor(imageTensor):
 
 
 #Configures learning rate
-def configLearningRate(sampleSize,globalStep):
+def configLearningRate(sampleSize,globalStep,batchSize,learningRate,learningRateDecayFactor):
     decaySteps = int(sampleSize/batchSize*2.0)
     return tf.train.exponential_decay(learningRate, globalStep,
                                       decaySteps, learningRateDecayFactor,
@@ -73,7 +73,8 @@ def initFunc():
 
 
 #Evaluates a network, uses modeltracker to get unseen dataset
-def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEvals=None):
+def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEvals=None, numClones = 1, cloneCpu = False,
+            tasks = 0, workerReplias = 1, numPSTasks = 0, preprocessThread=2):
     modelStalker = modTracker()
     stalker = tracker()
     trainDir,fullSteps = modelStalker.load(networkName,status = status, index = index)
@@ -85,7 +86,7 @@ def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEva
         #LOOK INTO MODEL CLASS****
         # Use for parallelism, cant beat google
         deployConfig = modelDeploy.DeploymentConfig(
-            num_clones=numClones,
+            num_clones=1,
             clone_on_cpu=cloneCpu,
             replica_id=tasks,
             num_replicas=workerReplias,
@@ -157,7 +158,6 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
 
     modelStalker = modTracker()
     stalker = tracker()
-
     trainDir,fullSteps = modelStalker.load(networkName,status = status, steps=steps,index = index)
     if reuse:
         optim = modelStalker.get(networkName,trainDir,'optim')
@@ -273,7 +273,7 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
 
 
         with tf.device(deployConfig.optimizer_device()):
-            learningRate = configLearningRate(sampleSize, globalStep )
+            learningRate = configLearningRate(sampleSize, globalStep,batchSize,learningRate,learningRateDecayFactor )
             optimizer = configOptimizer(learningRate, optim)
             summaries.add(tf.summary.scalar('learningRate',learningRate))
 
