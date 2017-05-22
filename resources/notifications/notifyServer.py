@@ -9,7 +9,7 @@ import threading
 import time
 import gc
 
-
+#Thread to keep checking if message has been recieved from pushbullet
 class receivePush(threading.Thread):
     def __init__(self,server):
         threading.Thread.__init__(self)
@@ -33,7 +33,7 @@ class receivePush(threading.Thread):
         except KeyboardInterrupt :
             pass
 
-
+#Thread to run commands once recieved from recievePush thread
 class handlePush(threading.Thread):
     def __init__(self,server,name):
         threading.Thread.__init__(self)
@@ -78,17 +78,19 @@ class server(object):
         self.receiver = receivePush(self)
         self.handlers =  [handlePush(self,1),handlePush(self,2)]
 
-
+    #Starts the server in a new thread, this allows it to run in the background
     def start(self):
         print('Stating messaging server')
         self.serverThread = threading.Thread(target=self.startThreads())
         self.serverThread.start()
 
+    #Starts threads
     def startThreads(self):
         self.receiver.start()
         for handle in self.handlers:
             handle.start()
 
+    #Shutdowns the server
     def shutdown(self):
         print('Shutting down messaging server, can take up to 10 seconds')
         self.exitFlag = 1
@@ -98,7 +100,7 @@ class server(object):
         self.serverThread.join()
 
         # print('Shutting down messaging server')
-
+    #Used to add new commands to the notify module
     def addCommands(self,commands):
         self.notify.addCommands(commands)
         self.setAllNotify()
@@ -107,12 +109,8 @@ class server(object):
         for instance in (obj for obj in gc.get_referrers(self.__class__) if isinstance(obj, self.__class__)):
             instance.notify = self.notify
 
-
+    #Used to inital server before starting
     @staticmethod
     def getServer(target=None,logging=False, commands=None):
         pushKey = util.configSectionMap("Keys")['pushbullet']
         return server(pushKey,target=None,logging=False, commands=commands)
-        # return notify(pushKey,target=target,logging=logging)
-
-    def getServerThread():
-        return threading.Thread(target=server.getServer)

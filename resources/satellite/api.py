@@ -14,7 +14,7 @@ from resources.notifications.notify import notify as notifyAPI
 from urllib.parse import urljoin
 from datetime import date, datetime, timedelta
 
-
+#Used for error reporting
 class APIError(Exception):
 
     def __init__(self, status=None, mess=None, body=None):
@@ -31,7 +31,7 @@ class API(object):
     sleep = 30
     def __init__(self, user, passw, url='https://scihub.copernicus.eu/apihub/', notify = False):
         self.logger = logging.getLogger('SentinelAPI')
-
+        #Uses notify to message user if enabled
         if notify:
             self.notifications = True
             self.notify = notifyAPI.getNotify()
@@ -42,39 +42,41 @@ class API(object):
         self.pageSize = 100
         self.url = url if url.endswith('/') else url + '/'
 
+    #Download images for a locale over a period of one month till the current year
     @staticmethod
     def getImages(locale,startYear,month,day,notify=True):
-        # try:
-        localeName = str(locale.lower()) + '.geojson'
-        inputLocale = util.checkFolder('Locale', Input=True)
-        inputLocale = os.path.join(inputLocale,localeName)
-        api = API('gillesk3','rockyou94',notify=notify)
+        try:
+            localeName = str(locale.lower()) + '.geojson'
+            inputLocale = util.checkFolder('Locale', Input=True)
+            inputLocale = os.path.join(inputLocale,localeName)
+            api = API('gillesk3','rockyou94',notify=notify)
 
-        year = startYear
-        endYear = datetime.now().year
-        while year < endYear:
-            if month ==12:
-                month2 = 1
-            else:
-                month2 = month+1
-            start = datetime(year, month,day)
-            end = datetime(year+1, month2,day)
+            year = startYear
+            endYear = datetime.now().year
+            while year < endYear:
+                if month ==12:
+                    month2 = 1
+                    year2 = year +1
+                else:
+                    year2 = year
+                    month2 = month+1
+                start = datetime(year, month,day)
+                end = datetime(year2, month2,day)
 
-            results = api.query(inputLocale,startDate=start,endDate = end)
-            if len(results) > 0:
-                api.download(results,locale = locale)
-            year += 1
-        # 
-        # except:
-        #     print('Unable to download images')
+                results = api.query(inputLocale,startDate=start,endDate = end)
+                if len(results) > 0:
+                    api.download(results,locale = locale)
+                year += 1
+        except:
+            print('Unable to download images')
 
-
-
+    #Used to query the schihub api for a list of images
     def query(self,locale, startDate=None, endDate=datetime.now(), **kwards):
         locale = self.getCoords(locale)
         query = self.formatQuery(locale, startDate, endDate, **kwards)
         return self.runQuery(query)
 
+    #Sends query to server
     def runQuery(self,query, startRow=0):
         url = self.formatURL(startRow=startRow)
         response = self.sesh.post(url, dict(q=query), auth=self.sesh.auth)
@@ -100,6 +102,7 @@ class API(object):
             output += self.runQuery(query,startRow=(startRow+self.pageSize))
         return output
 
+    #Formats query to be accepted by api
     def formatQuery(self,locale, startDate=None, endDate=datetime.now(), **kwargs):
         if startDate is None:
             startDate = self.formatDate(endDate - timedelta(hours=24) )
@@ -116,11 +119,13 @@ class API(object):
         query = acqisitionDate + queryLocale + filters
         return query
 
+    #Formats url to get rows and json format
     def formatURL(self, startRow=0):
         startQuery = 'search?format=json&rows={rows}&start={start}'.format(
         rows=self.pageSize, start=startRow)
         return urljoin(self.url, startQuery)
 
+    #Loops through all images that are to be downloaded
     def download(self, products,locale = None, path =None, maxTries = 5):
         if isinstance(products,dict):
             products = [products]
@@ -154,6 +159,8 @@ class API(object):
             self.notify.push('%d images downloaded' % len(results))
         return results
 
+
+    #Downloads individual image
     def downloadProduct(self, id,locale = None, path = None):
         info = None
         while info is None:
@@ -189,6 +196,7 @@ class API(object):
 
         return outputPath,info
 
+    #Gets more info for image
     def getOData(self,id):
         url = urljoin(self.url, "odata/v1/Products('%s')/?$format=json" % id)
         response = self.sesh.get(url)
@@ -205,6 +213,7 @@ class API(object):
                 'url': url}
         return info
 
+    # Formats data for api
     @staticmethod
     def getTime(date):
         tmp = int(date.replace('/Date(','').replace(')/', '') ) /1000
@@ -221,6 +230,7 @@ class API(object):
             except ValueError:
                 return inputDate
 
+    #Checks if a valid response was recieved from server
     @staticmethod
     def checkResponse(response):
         pass
@@ -244,6 +254,7 @@ class API(object):
                            mess=mess,
                            body=response.content)
 
+    #Gets coordinates from geojson file
     @staticmethod
     def getCoords(file, featureNumber=0):
 
@@ -253,6 +264,7 @@ class API(object):
         coordinates = ['%.5f %.5f' % (coord[0], coord[1]) for coord in coordinates]
         return ','.join(coordinates)
 
+    #Comparse checksum to see if image is already downloaded
     @staticmethod
     def compareMD5(filePath, serverChecksum):
         print('Comparing %s' %filePath)

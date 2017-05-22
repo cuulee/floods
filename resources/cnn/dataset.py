@@ -1,14 +1,13 @@
 import os,sys
 import tensorflow as tf
 from resources.resource import util
-
-
-
 import random
 from resources.imageTracker import tracker
 
 slim = tf.contrib.slim
 stalker = tracker()
+
+#Read an image from the filequeue
 def readFile(fileQueue):
     try:
 
@@ -20,7 +19,7 @@ def readFile(fileQueue):
         print('Error with image tracker')
         raise
 
-
+#Creates file queue from model dataset
 def getFileQueue(datalist,ratio):
     if type(ratio) is not list:
         raise ValueError('Ratio must be a list to boost data set labels by')
@@ -33,9 +32,5 @@ def getFileQueue(datalist,ratio):
         value = counter[l]
         value += 1
         counter.update({l:value})
-    # filesPaths = [image[0] for image in stalker.toList() ]
-    # labels = [int(stalker.getLabel(image)) for image in filesPaths]
-    return tf.train.slice_input_producer([filePaths,labels]), counter
 
-def getDataset():
-    filename_queue = tf.train.string_input_producer(stalker.toList()[0])
+    return tf.train.slice_input_producer([filePaths,labels]), counter

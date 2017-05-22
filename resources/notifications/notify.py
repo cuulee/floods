@@ -10,6 +10,8 @@ import logging
 import threading
 import inspect
 
+
+
 class device(object):
     def __init__(self, deviceInfo, sesh, url=  'https://api.pushbullet.com/v2/' ):
         try:
@@ -34,23 +36,28 @@ class device(object):
         except :
             return 'None'
 
+    #Update device information
     def updateInfo(self, **info):
         data = info
         response = self.sesh.post(self.url,data=data)
         print(response.status_code)
         print('Update successful')
 
+    #Deletes device from pushbullet account
     def deleteDevice(self):
         response = self.sesh.delete(self.url)
         if response.status_code != 200:
             print('Error deleting device')
 
+    #Deletes programs from pushbullet account
     def deletePushes(self):
         url = urljoin(self.basUrl, 'pushes')
         response = self.sesh.delete(url)
         if response.status_code != 200:
             print('Error deleting pushes')
 
+
+#Class to read and handle pushes
 class push(object):
 
 
@@ -102,7 +109,6 @@ class notify(object):
     options = {'p' : 'pushes', 'push': 'pushes',
                'd' : 'devices', 'device' :'devices'
                }
-    # commands = {'print' : printing()}
     minWindow = 40
 
     def __init__(self, APIKey, url= 'https://api.pushbullet.com/v2/', target = 'Main', logging = False, commands = None ):
@@ -121,7 +127,6 @@ class notify(object):
             if type(commands) is dict:
                 self.commands.update(commands)
 
-
             else:
                 print('Commands must be in name : func format')
 
@@ -130,12 +135,15 @@ class notify(object):
         self.sesh = requests.Session()
         self.sesh.auth = (APIKey,'')
         self.getDevices()
+
+    #Adds commands for notify to run
     def addCommands(self,commands):
 
         if hasattr(self,'commands'):
             self.commands.update(commands)
         else:
             self.commands = commands
+
 
     def logInit(self):
         try:
@@ -149,6 +157,7 @@ class notify(object):
         self.logger.setLevel(logging.DEBUG)
         self.logger.propagate = True
 
+    #Send push to devices
     def push(self, message, title='Update', target = None, option='p'):
         data = {'type':'note',
                 'title':title,
@@ -165,6 +174,8 @@ class notify(object):
         url = urljoin(self.url, self.options['p'])
         response = self.sesh.post(url, data=data, auth=self.sesh.auth)
 
+
+    #Gets all pushes within a certain time limit
     def getPushes(self,server = None,active = True):
         now = time.time()
         timeWindow = self.__getTimeWindow()
@@ -178,10 +189,13 @@ class notify(object):
         activePushes = [p for p in pushes if p.active == True]
         return self.checkPushes(activePushes,server)
 
+    #Delets pushes from main device
     def deleteMainPush(self):
         if hasattr(self, 'mainDevice'):
             self.mainDevice.deletePushes()
 
+
+    #Parses pushes before executing comands
     def checkPushes(self,pushes,server=None):
         serverQuit = False
         if hasattr(self,'commands') and self.serverFunc not in self.commands:
@@ -198,11 +212,12 @@ class notify(object):
                         self.runCommand(p,body,server)
         return serverQuit
 
+    #Flag for shutting server down
     @staticmethod
     def shutdownServer(server):
         server.exitFlag=1
 
-
+    #  Handles arguments in body of message within {}. enables users to pass args to functions
     def parseBody(self,body):
         try:
             allArgs = body[1].split('}')[0].split(',')
@@ -216,6 +231,7 @@ class notify(object):
         except:
             return body[0], None
 
+    #Runs command from user
     def runCommand(self,p,body, server):
         self.push('Ok running %s function' % body[0])
         body, args = self.parseBody(body)
@@ -236,14 +252,11 @@ class notify(object):
             # self.commands[body]()
 
 
-    def printing(self):
-        self.push('OK Printing', title = 'Command')
-        print('printing')
-
-
     def __getTimeWindow(self):
         return time.mktime( ( datetime.datetime.now() -datetime.timedelta(minutes=self.minWindow) ).timetuple()  )
 
+
+    #Gets device names linked with account
     def getNames(self):
         if hasattr(self, 'devices'):
             return [dev.nickname for dev in self.devices]
@@ -268,6 +281,7 @@ class notify(object):
 
         return self.devices
 
+    #Returns all active devices on the account
     def activeDevices(self, devices):
         tmp = []
         for d in devices:
@@ -276,6 +290,7 @@ class notify(object):
                     tmp.append(d)
         return tmp
 
+    #Method to self initial to notify class
     @staticmethod
     def getNotify(target=None,logging=False,commands = None):
         pushKey = util.configSectionMap("Keys")['pushbullet']

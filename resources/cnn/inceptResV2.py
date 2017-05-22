@@ -203,7 +203,6 @@ def inceptResV2(inputs, numClasses = 2, reuse=None, scope='IncepResV2',
 
                 return logits , endPoints
 
-
 def inceptResV2ArgScope(weightDecay=0.00004, batchNorm =True, batchNormDecay =0.9997, batchNormEpsil = 0.001 ):
     with slim.arg_scope([slim.conv2d,slim.fully_connected],
                         weights_regularizer=slim.l2_regularizer(weightDecay),

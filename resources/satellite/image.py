@@ -48,7 +48,6 @@ class image:
             self.name = os.path.basename(path)
 
             self.dataset = gdal.Open(path)
-            self.nameParse()
             if findPosition:
                 self.getSat()
         except IOError as e :
@@ -149,16 +148,6 @@ class image:
     def getInfo(self):
         print(gdal.Info( self.dataset))
 
-    #Parses name for info, NEEDS MORE WORK
-    def nameParse(self):
-        name = self.name
-        index = 0
-        for att in name.split('_'):
-            if index is 2:
-                pass
-                # FIX DATES
-                # self.date = self.getDate(att)
-            index +=1
 
     #Parses date in the standard name format by esa
     def getDate(self,string):
@@ -171,14 +160,9 @@ class image:
         except ValueError:
             return datetime.now()
 
+    #Converts image to some format, only has jpeg
     def convertTo(self,type, outputPath=None):
         types = {'jpeg' :['.jpeg', self.toJpeg ]}
-
-
-        # array = self.array()
-        # y,x = array.shape
-
-
 
         if not outputPath:
             outputPath = util.checkFolder('Tiff', Output=True)
@@ -188,79 +172,27 @@ class image:
             outputName = self.name.split('.')[0] + types[type][0]
             outputPath = os.path.join(outputPath,outputName)
 
-
-        # toFunc = types[]
         print('Converting image to %s' %types[type][0][1:])
         types[type][1](self.path,outputPath)
         print('Finished image to %s' %types[type][0])
-        # self.toJpeg(array,outputPath)
-
-        return
-
-        image.createTiff(array,outputPath,x,y )
 
 
-        # driver  = gdal.GetDriverByName('GTiff')
-        # image = driver.Create(outputPath, col, row, 1, gdalconst.GDT_UInt16 )
-        # imageBand = image.GetRasterBand(1)
-        # imageBand.WriteArray(dataset)
-
-        print('done')
-
+    # Converts image to jpeg
     @staticmethod
     def toJpeg(inputPath, outputPath):
-        tmpName = os.path.splitext(inputPath)[0] +'.tmp'
-        array = np.array(io.imread(inputPath))
-        # int8 = array.astype('uint8')
-        y, x = array.shape
-        tiffDriver  = gdal.GetDriverByName('GTiff')
-
-        intTiff = tiffDriver.Create(tmpName,x,y,1,gdalconst.GDT_UInt16)
-        intTiff.GetRasterBand(1).WriteArray(array)
+        convert = ['gdal_translate','-of', 'JPEG' , '-outsize', '25%', '25%' ,  '-ot', 'Byte', '-scale',inputPath, outputPath ]
+        proc = subprocess.Popen(convert)
+        proc.wait()
 
 
-        jpegDriver  = gdal.GetDriverByName('JPEG')
-        jpegDriver.CreateCopy(outputPath, intTiff,0)
-        # os.remove(tmpName)
-        print(outputPath)
-        return
-
-        # array = np.array(io.imread(inputPath))
-        # int8 = array.astype('uint8')
-        # array =io.imread(inputPath)
-        # im = Image.fromarray(array)
-        # im = im.convert('L')
-        # print(im)
-        # im.save(outputPath)
-        # io.imsave(outputPath,int8)
-
-
-        # convert = ['gdal_translate', '-of', 'JPEG', '-co' ,'-scale'
-        #                ,inputPath, outputPath ]
-        # convert = ['gdal_translate','-of', 'JPEG' , '-ot', 'Byte', '-scale',inputPath, outputPath ]
-
-        # subprocess.call(["gdal_translate.exe","-co", "TILED=YES", "-co", "COMPRESS=LZW" "-ot", "Byte", "-scale", image_in, image_out ])
-        # array = io.imread(inputPath)
-        # io.imsave(outputPath,array)
-
-        # proc = subprocess.Popen(convert)
-        # proc.wait()
-
-
-        # y,x = array.shape
-        # driver = gdal.GetDriverByName('JPEG')
-        # saveOptions = []
-        # saveOptions.append("QUALITY=100")
-        # img = driver.Create(outputPath,y,x,1,gdalconst.GDT_UInt16)
-        # imgBand = img.GetRasterBand(1)
-        # imgBand.WriteArray(array)
-
+    #Kills the image after displaying it
     @staticmethod
     def killDisplay():
         for proc in psutil.process_iter():
             if proc.name() == "display":
                 proc.kill()
 
+    #Display image on screen
     def show(self,size=None):
         if not size:
             size = self.displaySize
@@ -268,95 +200,6 @@ class image:
 
         im.thumbnail((1000,1000))
         im.show()
-
-    # #Convers image to type NEEDS MORE WORK
-    # def convertTo(self,type):
-    #     output = util.checkFolder(type,Output=True)
-    #     # Obtains a JPEG GDAL driver
-    #     imageDriver = gdal.GetDriverByName(type)
-    #     saveOptions = []
-    #     if type == 'JPEG':
-    #         saveOptions.append("QUALITY=100")
-    #
-    #     # Create the .type file
-    #
-    #     name = self.name.split('.')[0] + '.' + type.lower()
-    #     fullName = os.path.join(output,name)
-    #     imageDriver.CreateCopy(fullName, self.dataset, 0, saveOptions)
-    #     gdal.Close(self.dataset)
-    #     print(fullName + " was converted")
-    #
-    # # COnverts image to type NEEDS MORE WORK
-    # def convert(self, type):
-    #     oType = type.upper()
-    #     output = util.checkFolder(oType,Output=True)
-    #
-    #     name = self.name.split('.')[0] + '.' + oType.lower()
-    #     oFile = os.path.join(output,name)
-    #
-    #     if oType is 'JPEG':
-    #         convert = ['gdal_translate', '-ot', 'Byte' , '-of', oType, '-co' ,'COMPRESS=LZW', '-scale'
-    #                ,self.path, oFile ]
-    #     else:
-    #         convert = ['gdal_translate', '-of', oType, '-co' ,'COMPRESS=LZW', '-scale'
-    #                    ,self.path, oFile ]
-    #     proc = subprocess.Popen(convert)
-    #     proc.wait()
-    #     print( proc.returncode)
-    #     print(oFile + " was converted")
-    #
-    #
-    #
-    #
-    # #Warps image NEEDS MORE WORK ***********
-    # # def warpTo(self, image):
-    #     #oType = type.upper()
-    #     #       output = checkFolder('Outputs')
-    #     #       output = checkFolder(oType,output)
-    #     #       name = self.name.split('.')[0] + '.' + oType.lower()
-    #     #       oFile = os.path.join(output,name)
-    #
-    #     srcDs = self.dataset
-    #
-    #     srcWidth = srcDs.RasterXSize
-    #     srcHeight = srcDs.RasterYSize
-    #     srcDim = [srcWidth,srcHeight]
-    #
-    #     matchDs = image.dataset
-    #     matchWidth = matchDs.RasterXSize
-    #     matchHeight = matchDs.RasterYSize
-    #     matchDim = [matchWidth, matchHeight]
-    #
-    #     print("src W:%s H:%s" %(srcWidth,srcHeight))
-    #     print("dst W:%s H:%s" %(matchWidth,matchHeight))
-    #
-    #     #         Pick smallest width for destination dataset
-    #     if srcDim < matchDim :
-    #         srcPath = image.path
-    #         dsDim = list(map(str, srcDim))
-    #     else :
-    #         srcPath = self.path
-    #         dsDim =  list(map(str, matchDim))
-    #
-    #     output = util.checkFolder('Warp',Output=True)
-    #     #         name = self.name.split('.')[0] + '.' + oType.lower()
-    #     name = 'a.N1'
-    #     oFile = os.path.join(output,name)
-    #
-    #     #         warp = ['gdalwarp', '-s_srs', '+proj=longlat +datum=WGS84 +no_defs' ,
-    #     #                 '-t_srs' ,'+proj=longlat +datum=WGS84 +no_defs',
-    #     #                 '-ts' , dsDim[0], dsDim[1], '-ot', 'UInt16',
-    #     #                 srcPath, oFile
-    #     #                ]
-    #     warp = ['gdalwarp',
-    #             '-ts' , dsDim[0], dsDim[1], '-ot', 'UInt16',
-    #             self.path, oFile
-    #            ]
-    #
-    #     proc = subprocess.Popen(warp)
-    #     print("Warping %s" % srcPath)
-    #     proc.wait()
-    #     print( proc.returncode)
 
     # Colours image depedning on colour-relief file
     def colourImage(self, colour, *args):
@@ -381,7 +224,7 @@ class image:
 
         else : print('Could not find colour file %s' %colour)
 
-    #ONLY WORKS FOR SINGLE BAND
+    #returns image as an array
     def array(self,band=None):
 
         try:
@@ -393,23 +236,8 @@ class image:
                 return np.asarray(self.dataset.GetRasterBand(band).ReadAsArray())
         except ValueError:
             return None
-        #
-        # try:
-        #     io.imread(self.path,plugin='gdal')
-        # except:
-        #     pass
-        #
-        # try:
-        #     io.imread(self.path)
-        # except:
-        #     raise
 
-    #Display map of image NEEDS WORK
-    # def toMap(self):
-    #     my_gis = GIS()
-    #     display(my_gis.map(location=(self.lat,self.long), zoomlevel=8))
-    #     print("Outputting Map")
-
+    #Gets intersection of two borders
     def getIntersection(self,r1Coords,r2Coords):
         tmp = []
         if r1Coords[0][0] < r2Coords[0][0]:
@@ -449,6 +277,7 @@ class image:
                 tmpPixels[3] = pixels[index]
         return tmpPixels, tmpPoints
 
+
     def checkBoundaries(self,image, LTRB):
         # Used to make sure pixels are in correct places
         maxX = image.dataset.RasterXSize
@@ -485,6 +314,7 @@ class image:
 
         return LTRB[0],LTRB[1], LTRB[2], LTRB[3]
 
+    #Gets intersection of two images
     def getIntersect(self,image2):
         # load data
         image1 = self
@@ -555,6 +385,7 @@ class image:
 
         return array1, array2, right1-left1, bottom1-top1, right2-left2,bottom2-top2, intersection
 
+    #Creates tiff image from array and x,y
     @staticmethod
     def createTiff(array, outputPath, col, row):
         driver  = gdal.GetDriverByName('GTiff')
@@ -562,15 +393,13 @@ class image:
         imageBand = image.GetRasterBand(1)
         imageBand.WriteArray(array)
 
+    #Creats and intersection of two images and can save if told
     def createIntersectionOf(self, image,outPutNames, saveImages= False, outputFolder=None): #Creates two images in the same area
         src = self.dataset
         # We want a section of source that matches this:
         matchDs = image.dataset
         image1Array, image2Array, col1, row1, col2, row2, intersectLongLat = self.getIntersect(image)
-        #         minX = float(intersectLongLat[0])
-        #         maxY = float(intersectLongLat[1])
-        #         maxX = float(intersectLongLat[2])
-        #         minY = float(intersectLongLat[3])
+
         # Output / destination
         if saveImages:
             image1Filename = outPutNames[0]
@@ -589,24 +418,9 @@ class image:
             return True
         else:
             return [image1Array, image2Array]
-        image1gcps = []
-        gcps1 = self.dataset.GetGCPs()
-        #         for gcp in gcps1:
-        #             x = gcp.GCPX
-        #             y = gcp.GCPY
-        #             if (x <= minX and x >= maxX) and (y <=maxY and y >= minY) :
-        #                 image1gcps.append(gcp)
 
-        #         image2gcps = []
-        #         gcps2 = image.dataset.GetGCPs()
-        #         for gcp in gcps2:
-        #             x = gcp.GCPX
-        #             y = gcp.GCPY
-        #             if (x <= minX and x >= maxX) and (y <=maxY and y >= minY) :
-        #                 image2gcps.append(gcp)
-
-        # W should be positive note negative, translate back afte
-
+    #Fuses two images together that don't cover the exact same area using fusion of daubechies wavelet coefficients
+    #CAN KILL PROGRAM DUE TO VERY HIGH RAM USAGE** CAUTION, REQUIRES HIGH END MACHINE
     def polymerization(self, image2, mode=None, saveImages=False, level=None, clean=True, intersectOutputPath = None,   outputFolder = None ):
         if not intersectOutputPath:
             intersectOutputPath = util.checkFolder('Fusion', Input=True)
@@ -652,6 +466,10 @@ class image:
 
         print('Created fused image  :%s' % oName)
 
+
+
+    #Fuse one image with another, used to fuse vertical and horizontal polarities
+    #CAN KILL PROGRAM DUE TO VERY HIGH RAM USAGE** CAUTION, REQUIRES HIGH END MACHINE
     def fuseWith(self,image2, outputFolder=None, mode = None, level = None):
 
         array1 = self.array()
@@ -674,8 +492,7 @@ class image:
         io.imsave(oName,fusedImage)
         print('Created fused image  :%s' % oName)
 
-
-
+    #Fuses two array together using wavelets
     def fuseImages(self, array1, array2, mode, level): # Return fused images as array
 
         coeff1 = np.asarray(pywt.wavedec2( array1, mode, level=level))

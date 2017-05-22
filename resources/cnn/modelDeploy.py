@@ -1,3 +1,6 @@
+# This class is not my own work and is taken from https://github.com/tensorflow/models/blob/master/slim/deployment/model_deploy.py
+# More detail is provided in technical manual
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

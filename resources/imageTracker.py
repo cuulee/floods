@@ -4,11 +4,11 @@ import os
 import csv
 from PIL import Image
 import random
-# order of files array is [vv,vh,fused,label]
-#sort out paths issue
 
-#Currently only works for jpeg/locale/vv/filelocation type structure
-#only needs to be looked into for the updatepath func
+
+# order of files array is [vv,vh,fused,label]
+
+#Only works for jpeg/locale/[vv,vh,fused]/filelocation type structure
 
 
 class tracker(object):
@@ -18,6 +18,7 @@ class tracker(object):
     def __init__(self,trackerPath=None):
         self.loadTracker()
 
+    #Loads saved tracker with dataset
     def loadTracker(self):
         trackerName = 'imageTracker.pkl'
         trackerPath = util.checkFolder('trackers')
@@ -42,6 +43,7 @@ class tracker(object):
         with open(self.path, 'wb') as output:
             pickle.dump(self,output, pickle.HIGHEST_PROTOCOL)
 
+    #Changes labels in dataset, useful when switching between one hot encoding
     def changeLabel(self,old2new):
         if type(old2new) is not dict:
             print('Input must be dict of old label key - new label key')
@@ -62,6 +64,7 @@ class tracker(object):
             self.files[basename] = tmp
         return True
 
+    #Adds images to dataset
     def add(self,images,overwrite = False):
         for basename in images:
             try:
@@ -80,20 +83,24 @@ class tracker(object):
             except IndexError:
                 print(images[basename])
 
+
     def addTrain(self, images):
         self.trainList = images
 
     def addEval(self,images):
         self.evalList = images
 
+    #Gets locale of image
     @staticmethod
     def getLocale(path):
         return os.path.split( os.path.split( os.path.split(path)[0])[0])[1]
+
 
     @staticmethod
     def getParentDir(path):
          return os.path.split(os.path.dirname(path))[1]
 
+    #Used to change path of all images, useful when moving dataset folder
     def updatePath(self,path):
         # if not os.path.exists(path):
         #     print('Please input a valid path')
@@ -113,6 +120,7 @@ class tracker(object):
             self.files[basename] = tmp
         return True
 
+    #Gets list of locations in dataset
     def getLocaleList(self,locale):
         tmp = self.toList()
         tmp = [image[0] for image in tmp if self.getLocale(image[0]) == locale]
@@ -133,6 +141,7 @@ class tracker(object):
     def numLabels(self):
         return len(self.labels)
 
+    #Loads tracker from a csv file
     def loadCsv(self,name):
         filePath = util.checkFolder('JPEGS',Input = True)
         filePath = os.path.join(filePath,name)
@@ -148,6 +157,7 @@ class tracker(object):
                     images.update({basename:row})
         return images
 
+    #Saves tracker to a csv file
     def writeCsv(self,name=None):
         filePath= util.checkFolder('JPEGS',Input=True)
         if not name:
@@ -164,6 +174,7 @@ class tracker(object):
                 writer.writerow(tmp)
         print('finished writing')
 
+    #Returns a list of all images as [image,labe]
     def toList(self):
         imageList = []
         for basename in self.files:
@@ -175,17 +186,20 @@ class tracker(object):
             print('Check that image paths are correct')
         return imageList
 
+    #Resets tracker and loads from csv
     def reset(self, csvFile = None):
         self.files = {}
         self.labels = []
         self.add(self.loadCsv(csvFile))
 
+    #Gets label for iamge
     def getLabel(self,path):
         basename = self.getBasename(path)
         if basename in self.files:
             return self.files[basename][3]
         else: return None
 
+    #Gets a training and eval dataset that is increased by length of all images in list
     def getTrainEvallist(self,images,ratio):
         splitImages = {}
         for label in self.labels:
@@ -224,13 +238,14 @@ class tracker(object):
                 evalList.append(tmp)
 
         return trainList, evalList
-        # print(splitAmount)
 
     @staticmethod
     def getBasename(filepath):
         name = os.path.split(filepath)[1]
         return os.path.splitext(name)[0]
 
+
+    #Rotates and saves an image if not already found
     @staticmethod
     def rotate(path,degree,image):
         if os.path.exists(path):
@@ -240,6 +255,7 @@ class tracker(object):
             imR.save(path)
             return path
 
+    #Flips and saves an image if not already found
     @staticmethod
     def flip(path,image):
         if os.path.exists(path):
@@ -249,6 +265,7 @@ class tracker(object):
             imF.save(path)
             return path
 
+    #Gets fliped version of image
     @staticmethod
     def getFlip(filepath):
         dirpath = os.path.split(filepath)[0]
@@ -258,6 +275,7 @@ class tracker(object):
         imageOG = Image.open(filepath)
         return tracker.flip(nameFlip,imageOG)
 
+    #Flips all images in list
     @staticmethod
     def getFlippedList(images):
         tmp = []
@@ -269,6 +287,8 @@ class tracker(object):
 
         return tmp
 
+
+    #Gets rotated version of image
     @staticmethod
     def getRotate(filepath):
         images = []
@@ -286,6 +306,7 @@ class tracker(object):
         images.append(tracker.rotate(name135,135,imageOG))
         return images
 
+    #Rotates all images in list
     @staticmethod
     def getRotateList(images):
         tmp = []
@@ -298,6 +319,7 @@ class tracker(object):
 
         return tmp
 
+    #Balances list by repeating images by given ratio. uselful to increase dataset size
     def getBalancedList(self,images,ratioList,shuffleList=True):
         if len(self.labels) != len(ratioList):
             raise ValueError('Ratio must match amount of labels')
@@ -353,11 +375,13 @@ class tracker(object):
             random.shuffle(balanceList)
         return balanceList
 
+    #Checks if vertical image
     @staticmethod
     def isVer(path):
         dirAbove = os.path.split(os.path.dirname(path))[1]
         return dirAbove == 'VV'
 
+    #Checks if horizontal image
     @staticmethod
     def isHor(path):
         dirAbove = os.path.split(os.path.dirname(path))[1]
@@ -475,6 +499,8 @@ class tracker(object):
 
         return imageData
 
+
+    #Gets training and evalutating data for model, eval dataset is unseen in training
     def getData(self, eval= False, isTraining=True, ratio=None, shuffle=True):
         images = self.toList()
         if not eval:
@@ -487,7 +513,7 @@ class tracker(object):
                 allImages,evalList = self.getTrainEvallist(allImages,ratio)
                 self.addTrain(allImages)
                 self.addEval(evalList)
-                # self.saveTracker()
+                self.saveTracker()
         else:
             if hasattr(self,'evalList'):
                 allImages = self.evalList()

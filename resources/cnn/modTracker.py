@@ -1,5 +1,5 @@
 from resources.resource import util
-from resources.resource import nets
+from resources.resourceNet import nets
 import pickle
 import os
 import csv
@@ -15,6 +15,7 @@ class tracker(object):
     def __init__(self,trackerPath=None):
         self.loadTracker()
 
+    #Loads saved tracker with models
     def loadTracker(self):
         trackerName = 'modelTracker.pkl'
         trackerPath = util.checkFolder('trackers')
@@ -34,6 +35,7 @@ class tracker(object):
         with open(self.path, 'wb') as output:
             pickle.dump(self,output, pickle.HIGHEST_PROTOCOL)
 
+
     def load(self,model,status,steps=None,index = None):
         if status in self.types:
             if not index:
@@ -41,6 +43,7 @@ class tracker(object):
             elif index and status=='select':
                 return self.types[status](model,steps,index)
 
+    #Returns the latest model
     def latest(self,model,steps):
         if model not in self.models:
             raise ValueError('Model %s was not found in the model list ' % model)
@@ -53,6 +56,7 @@ class tracker(object):
             steps = 0
         return modelPath, oldStep+steps
 
+    #Gets attribute for model
     def get(self,model,path,att):
         if att == 'steps':
             return self.getSteps(path)
@@ -61,10 +65,11 @@ class tracker(object):
         else:
             raise ValueError('%s was not found in model %s: %s' %(att,model,path))
 
+    #Updates attribut
     def updateAtt(self,model,path,att,value):
         self.models[model][path].update({att:value})
 
-
+    # Returns model at index i
     def select(self,model,steps,index):
         if model not in self.models:
             raise ValueError('Model %s was not found in the model list ' % model)
@@ -108,6 +113,7 @@ class tracker(object):
 
         return  util.checkFolder(str(latest),path=modelPath)
 
+    #Returns a new model
     def new(self,model,steps):
         if model not in nets.netModel:
             raise ValueError('Model %s was not found in the model list in nets' % model)
@@ -125,23 +131,26 @@ class tracker(object):
 
         latest += 1
         modelPath = util.checkFolder(str(latest),path=modelPath)
-        self.addModel(model,modelPath,steps)
+        self.addModel(model,modelPath)
         return modelPath, steps
         # modelPath = util.checkFolder(model,)
 
-    def addModel(self,model,modelPath,steps):
+
+    #Adds model to model dictionary
+    def addModel(self,model,modelPath):
         if model not in self.models:
-            self.models.update({model:{modelPath:[steps]}})
+            self.models.update({model:{modelPath:{}}})
         else:
             paths = self.models[model]
-            self.models[model].update({modelPath:[steps]})
+            self.models[model].update({modelPath:{}})
 
 
-
+    #Resets tracker
     def reset(self):
         self.models = {}
         self.modelData = {}
 
+    #Adds data for model, useful when retraining
     def addData(self,modelPath,dataset,update = False):
         if modelPath in self.modelData and not update:
             print('model data has already been added, set update - True to overwrite')
@@ -153,6 +162,7 @@ class tracker(object):
         elif modelPath not in self.modelData:
             self.modelData.update({modelPath:dataset})
 
+    #Gets current step of model
     def getSteps(self,modelPath):
 
         files = [f for f in os.listdir(modelPath) if os.path.isfile(os.path.join(modelPath, f))]

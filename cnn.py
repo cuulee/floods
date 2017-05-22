@@ -1,11 +1,10 @@
-from resources.resource import nets
+from resources.resourceNet import nets
 from resources.resource import tracker
-from resources.resource import modTracker
+from resources.resourceNet import modTracker
 
-from resources.resource import dataset
+from resources.resourceNet import dataset
 from resources.resource import notify
-from resources.resource import preprocess
-from resources.resource import modelDeploy
+from resources.resourceNet import modelDeploy
 from resources.resource import image as satImage
 from resources.resource import util
 from tensorflow.python.ops import control_flow_ops
@@ -21,25 +20,9 @@ slim = tf.contrib.slim
 netsList = {'incept':nets.inceptResV2}
 scopeList ={'incept':nets.inceptResV2ArgScope}
 
-networkName = 'incept'
-isTraining = True
-learningRate = 0.01
-learningRateDecayFactor = 0.94
-batchSize = 30
-preprocessThread = 2
-numClones =1
-cloneCpu = False
-tasks = 0
-workerReplias = 1
-numPSTasks = 0
-optim = 'adam'
-steps = 20000
-trainDir = util.checkFolder('models')
-trainDir = util.checkFolder('withFlip',path = trainDir)
 
-note = notify.getNotify()
 
-#Not sure where weightDecay is used
+#Returns network function for a model
 def getNetFunc(name,numClasses,weightDecay=0.0,isTraining=False):
 
 
@@ -58,17 +41,16 @@ def getNetFunc(name,numClasses,weightDecay=0.0,isTraining=False):
 
     return netFunc
 
+
+#Display an tensor image to verify if read in correctly
 def displayImageTensor(imageTensor):
     tensor = np.squeeze(imageTensor,axis=(2,))
     im = Image.fromarray(tensor)
 
     im.show()
 
-def killDisplay():
-    for proc in psutil.process_iter():
-        if proc.name() == "display":
-            proc.kill()
 
+#Configures learning rate
 def configLearningRate(sampleSize,globalStep):
     decaySteps = int(sampleSize/batchSize*2.0)
     return tf.train.exponential_decay(learningRate, globalStep,
@@ -76,6 +58,7 @@ def configLearningRate(sampleSize,globalStep):
                                       staircase=True,
                                       name='exponentialDecayLearningRate')
 
+#Configures optimizer
 def configOptimizer(learningRate, optim):
     if optim =='adam':
         optimizer = tf.train.AdamOptimizer(learningRate)
@@ -89,6 +72,7 @@ def initFunc():
     return None
 
 
+#Evaluates a network, uses modeltracker to get unseen dataset
 def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEvals=None):
     modelStalker = modTracker()
     stalker = tracker()
@@ -141,8 +125,7 @@ def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEva
 
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
         'Accuracy': slim.metrics.streaming_accuracy(prediction, labels),
-        'Recall_5': slim.metrics.streaming_recall_at_k(logits, labels, 5),
-                })
+                    })
 
         for name, value in names_to_values.items():
             summary_name = 'eval/%s' % name
@@ -166,7 +149,7 @@ def evalNN(networkName='incept',status='latest',batchSize=35,index = None,numEva
 
         note.push('Finished eval')
 
-
+#Trains a network, can load new or old models
 def runNN(networkName='incept',isTraining=True, status = 'new', index = None, learningRate =0.01, learningRateDecayFactor=0.94,
           batchSize=35, preprocessThread = 2, numClones = 1, cloneCpu = False,
           tasks = 0, workerReplias = 1, numPSTasks = 0, optim = 'adam',
@@ -244,7 +227,6 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
 
         height,width = netsList[networkName].defaultImageSize, netsList[networkName].defaultImageSize
         image = tf.image.resize_images(image,[height,width],method=0)
-        # image = preprocess.preprocessImage(image,netsList[networkName].defaultImageSize,netsList[networkName].defaultImageSize,isTraining=True)
 
         images,labels = tf.train.batch([image,label],batch_size=batchSize, num_threads=preprocessThread, capacity=2*batchSize)
         labelsOneHot = slim.one_hot_encoding(labels, len(stalker.labels))
@@ -328,29 +310,3 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
 
 
         note.push('Finished training')
-
-# modelStalker = modTracker()
-# del modelStalker.models['incept']['/media/karl/My Files/Project/Resources/models/incept/3']
-# modelStalker.saveTracker()
-# print(modelStalker.models)
-
-# modelStalker.models['incept'].update({'/media/karl/My Files/Project/Resources/models/incept/1': {'optim':'adam','batchSize':30},
-#                                     '/media/karl/My Files/Project/Resources/models/incept/2': {'optim':'rmsprop','batchSize':35}} )
-
-# print(modelStalker.get('incept','/media/karl/My Files/Project/Resources/models/incept/1','optim'))
-# modelStalker.updateAtt('incept','/media/karl/My Files/Project/Resources/models/incept/1','optim','hi')
-# print(modelStalker.models)
-# modelStalker.saveTracker()
-# print(modelStalker.models)
-# print(modelStalker.getSteps('incept'))
-# stalker = tracker()
-# modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[33180],'/media/karl/My Files/Project/Resources/models/incept/2': [55250]}})
-# modelStalker.saveTracker()
-# print(modelStalker.models['incept'] )
-
-
-# evalNN()
-# evalNN(status='select',index = 1)
-
-# runNN(steps=2500, status='select',index = 1)
-# runNN(status='latest')

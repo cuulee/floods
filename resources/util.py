@@ -11,7 +11,7 @@ Config.read("./Settings.ini")
 
 
 
-
+#Checks if folder exists and creates one if not found
 def checkFolder(folder, Input = False, Output=False, path=None ):
     try:
         folder = str(folder)
@@ -40,6 +40,7 @@ def checkFolder(folder, Input = False, Output=False, path=None ):
     except:
         raise
 
+#Gets the distance between two coordinates in KM
 def haversine(lat1, lon1, lat2, lon2):
     """
     Calculate the great circle distance between two points
@@ -55,11 +56,14 @@ def haversine(lat1, lon1, lat2, lon2):
     km = 6367 * c
     return km
 
+#Yiels all files in a directory
 def files(path):
     for file in os.listdir(path):
         if os.path.isfile(os.path.join(path, file)):
             yield file
 
+
+#Returns a dict of images with long lat
 def parseFolder(directory, findPosition=True):
     #Check if variable was already created because of recursion
     if 'stats' not in locals() or 'stats' not in globals():
@@ -77,6 +81,9 @@ def parseFolder(directory, findPosition=True):
                 print("%s is not an image" % file)
     return stats
 
+
+#Used to return a list of satellite images that can be fused together for training.
+#Unused because of limited hardware for image fusion
 def comparePoint(images,distance, backgroundImages = None, moreInfo = False):
     close = []
     backgroundFound = {}
@@ -111,16 +118,16 @@ def comparePoint(images,distance, backgroundImages = None, moreInfo = False):
         return [close,backgroundFound, noBackground]
     return close
 
+#Moves files and delets original
 def moveFile(path, dst):
-    # name = os.path.basename(path)
-    # folderName = name[14:18]
-    # folderPath = self.checkFolder(folderName, path=dst)
-    # fileDst = os.path.join(folderPath,name)
+
     shutil.copy(path, dst )
     os.remove(path)
 
+
+#Moves files and into resource folder that can be fused together
+#Unused because of limited hardware for image fusion
 def sortImages(similiarImages, hasBackground, noBackground):
-    #VERIFY BEFORE USING AGAIN **************
     close = {}
     for images in similiarImages:
         if images[0]  not in close:
@@ -206,6 +213,7 @@ def sortImages(similiarImages, hasBackground, noBackground):
 
     return True
 
+#Used to get a value from settings file
 def configSectionMap(section):
     tmp = {}
 
