@@ -174,27 +174,18 @@ def runNN(networkName='incept',isTraining=True, status = 'new', index = None, le
 
     modelStalker = modTracker()
     stalker = tracker()
-    # modelStalker.models.update({'incept':{'/media/karl/My Files/Project/Resources/models/incept/1':[33180],'/media/karl/My Files/Project/Resources/models/incept/2': [55250]}})
-    # modelStalker.saveTracker()
-    # print(modelStalker.models['incept'] )
-    # return
-    # m.pop()
-    #
-    #
-    # modelStalker.models.update({'incept':m})
-    # modelStalker.reset()
-    #
+
     trainDir,fullSteps = modelStalker.load(networkName,status = status, steps=steps,index = index)
     if reuse:
         optim = modelStalker.get(networkName,trainDir,'optim')
         batchSize = modelStalker.get(networkName,trainDir,'batchSize')
-    print(batchSize)
-
 
     if status == 'new':
         trainSet,evalSet = stalker.getData(isTraining=isTraining)
         modelStalker.addData(trainDir,[trainSet,evalSet],update =True)
-        
+        modelStalker.updateAtt(networkName,trainDir,'batchSize',batchSize)
+        modelStalker.updateAtt(networkName,trainDir,'optim',optim)
+
         datalist = trainSet
 
     elif status == 'load' or status == 'latest' or status == 'select':

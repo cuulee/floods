@@ -42,6 +42,34 @@ class API(object):
         self.pageSize = 100
         self.url = url if url.endswith('/') else url + '/'
 
+    @staticmethod
+    def getImages(locale,startYear,month,day,notify=True):
+        # try:
+        localeName = str(locale.lower()) + '.geojson'
+        inputLocale = util.checkFolder('Locale', Input=True)
+        inputLocale = os.path.join(inputLocale,localeName)
+        api = API('gillesk3','rockyou94',notify=notify)
+
+        year = startYear
+        endYear = datetime.now().year
+        while year < endYear:
+            if month ==12:
+                month2 = 1
+            else:
+                month2 = month+1
+            start = datetime(year, month,day)
+            end = datetime(year+1, month2,day)
+
+            results = api.query(inputLocale,startDate=start,endDate = end)
+            if len(results) > 0:
+                api.download(results,locale = locale)
+            year += 1
+        # 
+        # except:
+        #     print('Unable to download images')
+
+
+
     def query(self,locale, startDate=None, endDate=datetime.now(), **kwards):
         locale = self.getCoords(locale)
         query = self.formatQuery(locale, startDate, endDate, **kwards)
@@ -156,10 +184,6 @@ class API(object):
                 self.logger.info('%s was not downloaded correctly' % outputPath)
                 os.remove(outputPath)
 
-        #
-        # if os.path.exists(outputPath):
-        #     self.logger.info('%s was already found.' % outputPath)
-        #     return outputPath, info
 
         homura.download(info['url'],path = outputPath, auth=self.sesh.auth)
 
@@ -205,7 +229,6 @@ class API(object):
             response.json()
         except( requests.HTTPError, ValueError) as e:
             mess = 'Response not valid'
-        #             try:
             try:
                 mess = response.json()['error']['message']['value']
             except:
